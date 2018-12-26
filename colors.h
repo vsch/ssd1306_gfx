@@ -1,5 +1,5 @@
-#ifndef ST7735_COLORS_H
-#define ST7735_COLORS_H
+#ifndef _ST7735_COLORS_H
+#define _ST7735_COLORS_H
 
 // RGB(r,g,b) needs to be defined depending on RGB or BGR order
 #ifdef ST7735_IS_BGR(DISPLAY_TYPE)
@@ -31,4 +31,4 @@
 #error "Unsupported Display Type "
 #endif
 
-#endif //ST7735_COLORS_H
+#endif //_ST7735_COLORS_H

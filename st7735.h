@@ -1,5 +1,5 @@
-#ifndef _TFT18_H_
-#define _TFT18_H_
+#ifndef _ST7735_H_
+#define _ST7735_H_
 
 #include "Arduino.h"
 #include <stdlib.h>
@@ -230,4 +230,4 @@ public:
 // helper functions
 // calculate integer value of square root
 
-#endif // _TFT18_H_
+#endif // _ST7735_H_
