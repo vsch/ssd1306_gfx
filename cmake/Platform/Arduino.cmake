@@ -923,7 +923,7 @@ endfunction()
 #=============================================================================#
 function(find_arduino_libraries VAR_NAME SRCS ARDLIBS)
     get_property(include_dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
-    
+
     set(ARDUINO_LIBS )
     foreach(SRC ${SRCS})
 
@@ -1004,7 +1004,7 @@ set(SPI_RECURSE True)
 set(SoftwareSerial_RECURSE True)
 set(EEPROM_RECURSE True)
 set(LiquidCrystal_RECURSE True)
-set(TFT_RECURSE True)
+set(ST7735_RECURSE True)
 set(WiFi_RECURSE True)
 set(Robot_Control_RECURSE True)
 function(setup_arduino_library VAR_NAME BOARD_ID LIB_PATH COMPILE_FLAGS LINK_FLAGS)

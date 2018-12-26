@@ -14,7 +14,10 @@
 #include <string.h>         // string manipulation routines
 #include <avr/sleep.h>      // used for sleep functions
 #include <stdlib.h>
-#include "tft18.h"
+#include "st7735.h"
+
+#define DISPLAY_TYPE ST7735_TYPE_OLED_096
+#include "colors.h"
 
 // ---------------------------------------------------------------------------
 // MISC ROUTINES
@@ -24,7 +27,7 @@ void msDelay(int delay) {
 }
 
 // flash the on-board LED at ~ 3 Hz
-void FlashLED(byte count) {
+void FlashLED(uint8_t count) {
     for (; count > 0; count--) {
         setBit(PORTB, LED);      // turn LED on
         msDelay(150);           // wait
@@ -36,12 +39,12 @@ void FlashLED(byte count) {
 #define SPCR_NORMAL     0x50
 #define CS_DELAY        2.0
 
-Tft18 tft = Tft18();
+St7735 tft = Tft18(DISPLAY_TYPE);
 int interTestDelay = 500;
 
 // --------------------------------------------------------------------------- // TEST ROUTINES
 // draws 4000 pixels on the screen
-void PixelTest(byte alpha) {
+void PixelTest(uint8_t alpha) {
     tft.clearScreen();
     for (int i = 4000; i > 0; i--) // do a whole bunch:
     {
@@ -53,8 +56,8 @@ void PixelTest(byte alpha) {
 }
 
 // sweeps Line routine through all four quadrants.
-void LineTest(color_t color, byte alpha) {
-//    tft.clearScreen();
+void LineTest(color_t color, uint8_t alpha) {
+//    st7735.clearScreen();
     color_t background = tft.background;
     tft.background = color;
     tft.alpha = alpha;
@@ -68,7 +71,7 @@ void LineTest(color_t color, byte alpha) {
 }
 
 // draw series of concentric circles
-void CircleTest(int color, byte alpha) {
+void CircleTest(int color, uint8_t alpha) {
     tft.clearScreen();
     tft.alpha = alpha;
 
@@ -80,7 +83,6 @@ void CircleTest(int color, byte alpha) {
 #define rad 40
 
 void ColorCircleTest() {
-
     int cx = tft.maxX / 2;
     int cy = tft.maxY / 2;
 
@@ -91,44 +93,49 @@ void ColorCircleTest() {
     int cy2 = cy + (433 * rad) / 1500; // sqrt(3)/6 * rad
     int cy3 = cy2;
 
-    tft.background = RGB565(0, 0, 0);
+    tft.background = RGB(0, 0, 0);
     tft.alpha = 128;
-    tft.fillCircle(cx, cy, rad * 3 / 2, RGB565(255, 255, 255));
+    tft.fillCircle(cx, cy, rad * 3 / 2, RGB(255, 255, 255));
     msDelay(interTestDelay / 4);
-    tft.fillCircle(cx, cy, rad, RGB565(128, 128, 128));
+    tft.fillCircle(cx, cy, rad, RGB(128, 128, 128));
     msDelay(interTestDelay / 4);
-    tft.fillCircle(cx, cy, rad / 2, RGB565(0, 0, 0));
+    tft.fillCircle(cx, cy, rad / 2, RGB(0, 0, 0));
     msDelay(interTestDelay / 4);
 
     tft.alpha = 128;
-    tft.fillCircle(cx1, cy1, rad, RGB565(255, 0, 0));
+    tft.fillCircle(cx1, cy1, rad, RGB(255, 0, 0));
     msDelay(interTestDelay / 4);
-    tft.fillCircle(cx2, cy2, rad, RGB565(0, 255, 0));
+    tft.fillCircle(cx2, cy2, rad, RGB(0, 255, 0));
     msDelay(interTestDelay / 4);
-    tft.fillCircle(cx3, cy3, rad, RGB565(0, 0, 255));
+    tft.fillCircle(cx3, cy3, rad, RGB(0, 0, 255));
     msDelay(interTestDelay / 4);
 
     tft.alpha = 196;
-    tft.fillCircle(cx1, cy1, rad / 2, RGB565(255, 0, 0));
+    tft.fillCircle(cx1, cy1, rad / 2, RGB(255, 0, 0));
     msDelay(interTestDelay / 4);
-    tft.fillCircle(cx2, cy2, rad / 2, RGB565(0, 255, 0));
+    tft.fillCircle(cx2, cy2, rad / 2, RGB(0, 255, 0));
     msDelay(interTestDelay / 4);
-    tft.fillCircle(cx3, cy3, rad / 2, RGB565(0, 0, 255));
+    tft.fillCircle(cx3, cy3, rad / 2, RGB(0, 0, 255));
     msDelay(interTestDelay / 4);
 }
 
 // Fills screen with characters
 void FillChars() {
     tft.clearScreen();
-    int chars = tft.maxCol * tft.maxRow;
-    int xMargin = (tft.maxX - tft.maxCol * TFT_CHAR_WIDTH) / 2;
-    int yMargin = (tft.maxY - tft.maxRow * TFT_CHAR_HEIGHT) / 2;
+    Serial.print("Fill chars maxCols: ");
+    Serial.print(tft.maxCols);
+    Serial.print(" maxRows: ");
+    Serial.println(tft.maxRows);
+
+    int chars = tft.maxCols * tft.maxRows;
+    int xMargin = (tft.maxX - tft.maxCols * ST7735_CHAR_WIDTH) / 2;
+    int yMargin = (tft.maxY - tft.maxRows * ST7735_CHAR_HEIGHT) / 2;
 
     for (int i = 0; i < chars; i++) {
-        int x = i % tft.maxCol;
-        int y = i / tft.maxCol;
+        int x = i % tft.maxCols;
+        int y = i / tft.maxCols;
         char ascii = static_cast<char>((i % 96) + 32);
-        tft.putCh(ascii, x * TFT_CHAR_WIDTH + xMargin, y * TFT_CHAR_HEIGHT + yMargin);
+        tft.putCh(ascii, x * ST7735_CHAR_WIDTH + xMargin, y * ST7735_CHAR_HEIGHT + yMargin);
     }
     msDelay(interTestDelay);
 }
@@ -136,7 +143,7 @@ void FillChars() {
 uint8_t red = 31, green = 0, blue = 0, state = 0;
 
 void RainbowFill() {
-    uint16_t color = RGB565(red, green, blue);
+    uint16_t color = RGB(red, green, blue);
     tft.alpha = 255;
 
     for (int i = 0; i < tft.maxY; i++) {
@@ -216,19 +223,79 @@ uint32_t time() {
 
 ISR(TIMER0_COMPA_vect) {//timer0 interrupt 2kHz toggles pin 8
 //generates pulse wave of frequency 2kHz/2 = 1kHz (takes two cycles for full wave- toggle high then toggle low)
-        timer++;
+    timer++;
 }
 
 #endif
+
+/*
+  SerialEvent occurs whenever a new data comes in the hardware serial RX. This
+  routine is run between each time loop() runs, so using delay inside loop can
+  delay response. Multiple bytes of data may be available.
+*/
+void serialEvent() {
+    while (Serial.available()) {
+        // drain port
+        Serial.read();
+    }
+}
 
 void SetupPorts() {
     DDRB = PORTB_OUT; // 0010.1111; set B1, B2-B3, B5 as outputs
     DDRC = 0x00; // 0000.0000; set PORTC as inputs
     DDRD = 0x70; // 0000.0000; set PORTD 5,6 as output
     PORTD = 0;
-    setBit(TFT_RST_PORT, TFT_RST_BIT); // start with TFT reset line inactive high
-    setBit(TFT_CS_PORT, TFT_CS_BIT);  // deselect TFT CS
-    clearBit(TFT_SCK_PORT, TFT_SCK_BIT);  // TFT SCK Low
+    setBit(ST7735_RST_PORT, ST7735_RST_BIT); // start with TFT reset line inactive high
+    setBit(ST7735_CS_PORT, ST7735_CS_BIT);  // deselect TFT CS
+    clearBit(ST7735_SCK_PORT, ST7735_SCK_BIT);  // TFT SCK Low
+}
+
+struct ColorCase
+{
+    uint16_t color;
+    char *name;
+};
+
+const ColorCase colorCases[] PROGMEM = {
+        {BLACK,   "BLACK"},
+        {BLUE,    "BLUE"},
+        {RED,     "RED"},
+        {GREEN,   "GREEN"},
+        {LIME,    "LIME"},
+        {CYAN,    "CYAN"},
+        {MAGENTA, "MAGENTA"},
+        {YELLOW,  "YELLOW"},
+        {WHITE,   "WHITE"},
+        {0, NULL}
+};
+
+void ColorTest() {
+    tft.clearScreen();
+    tft.gotoCharXY(0, 0);
+    int i;
+    for (i = 0;; i++) {
+        const char *name;
+        uint16_t color;
+        switch (i) {
+            // @formatter:off
+            case 0: color = BLUE; name = "BLUE"; break;
+            case 1: color = RED; name = "RED"; break;
+            case 2: color = GREEN; name = "GREEN"; break;
+            case 3: color = LIME; name = "LIME"; break;
+            case 4: color = CYAN; name = "CYAN"; break;
+            case 5: color = MAGENTA; name = "MAGENTA"; break;
+            case 6: color = YELLOW; name = "YELLOW"; break;
+            case 7: color = WHITE; name = "WHITE"; break;
+            default: color = 0; name = NULL;
+            // @formatter:on
+        }
+
+        if (!name) break;
+
+        tft.foreground = color;
+        tft.write(name);
+        tft.write(' ');
+    }
 }
 
 // --------------------------------------------------------------------------- // MAIN PROGRAM
@@ -255,36 +322,59 @@ int main() {
 
     SetupPorts();                               // use PortB for LCD interface
     FlashLED(1);                                // indicate program start
-    tft.openSPI();                                  // start communication to TFT
-    tft.initDisplay();                              // initialize TFT controller
+    Serial.begin(57600);
+
+    tft.openSPI();                              // start communication to TFT
+    tft.initDisplay(ST7735_ROT_0);                              // initialize TFT controller
     long id, id2, id3;
 
-    for (int rot = TFT_ROT_0; rot <= TFT_ROT_270 * 4; rot++) {
-        tft.setOrientation(rot % (TFT_ROT_270 + 1));
+    for (int rot = ST7735_ROT_0; rot <= ST7735_ROT_270; rot++) {
+        tft.setOrientation(static_cast<uint8_t>(rot % (ST7735_ROT_270 + 1)));
+        ColorTest();
+        msDelay(interTestDelay * 4);
+    }
 
-        tft.foreground = CYAN;
+    tft.clearScreen();
+    for (int rot = ST7735_ROT_0; rot < (ST7735_ROT_270 + 1) * 4; rot++) {
+        tft.setOrientation(static_cast<uint8_t>(rot % (ST7735_ROT_270 + 1)));
+
+        switch (rot / (ST7735_ROT_270 + 1)) {
+            case 0:
+                tft.foreground = CYAN;
+                break;
+            case 1:
+                tft.foreground = YELLOW;
+                break;
+            case 2:
+                tft.foreground = RED;
+                break;
+
+            default:
+            case 3:
+                tft.foreground = WHITE;
+                break;
+        }
+
         FillChars();                            // show full screen of ASCII chars
         tft.clearScreen();
     }
 
-    for (int rot = TFT_ROT_0; rot <= TFT_ROT_270; rot++) {
-        tft.setOrientation(rot);
+    for (int rot = ST7735_ROT_0; rot <= ST7735_ROT_270; rot++) {
+        tft.setOrientation(static_cast<uint8_t>(rot));
 
         tft.foreground = CYAN;
         tft.clearScreen();
 /*
     CircleTest(0, 255);
     CircleTest(0, 128);
-    CircleTest(RGB565(255, 0, 0), 128);
-    CircleTest(RGB565(0, 255, 0), 128);
-    CircleTest(RGB565(0, 0, 255), 128);
+    CircleTest(RGB(255, 0, 0), 128);
+    CircleTest(RGB(0, 255, 0), 128);
+    CircleTest(RGB(0, 0, 255), 128);
 
 //*/
         LineTest(BLACK, 255);
         LineTest(BLACK, 128);
-        LineTest(RGB565(255, 0, 0), 128);
-        LineTest(RGB565(0, 255, 0), 128);
-        LineTest(RGB565(0, 0, 255), 128);
+        LineTest(RGB(0, 0, 255), 128);
 //*/
 
 //*
@@ -305,9 +395,9 @@ int main() {
         tft.foreground = YELLOW;
         tft.background = BLACK;
         tft.write(str);                       // display text inside oval
-        // tft.writeHex((int)(id >> 16), YELLOW);
-        // tft.write(' ', YELLOW);
-        // tft.writeHex((int)id, YELLOW);
+        // st7735.writeHex((int)(id >> 16), YELLOW);
+        // st7735.write(' ', YELLOW);
+        // st7735.writeHex((int)id, YELLOW);
         msDelay(interTestDelay);
 
         id = 0xF0E1D2C3; //ReadID();
@@ -326,15 +416,15 @@ int main() {
 //*/
     }
 
-    tft.foreground = RGB565(255, 255, 128);
-    tft.background = RGB565(32, 32, 160);
+    tft.foreground = RGB(255, 255, 128);
+    tft.background = RGB(32, 32, 160);
     tft.alpha = 255;
-    tft.setOrientation(TFT_ROT_180);
+    tft.setOrientation(ST7735_ROT_180);
 
     int totalLines = 2;
     int totalColumns = 15;
-    int col0 = (tft.maxX / TFT_CHAR_WIDTH - totalColumns) / 2;
-    int line0 = (tft.maxY / TFT_CHAR_HEIGHT - totalLines) / 2;
+    int col0 = (tft.maxCols - totalColumns) / 2;
+    int line0 = (tft.maxRows - totalLines) / 2;
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
@@ -345,10 +435,10 @@ int main() {
         RainbowFill();
 
 #ifdef SHOW_TIMING
-    tft.fillRect(col0 * TFT_CHAR_WIDTH - 1, line0 * TFT_CHAR_HEIGHT - 1,
-                 (col0 + totalColumns) * TFT_CHAR_WIDTH, (line0 + totalLines) * TFT_CHAR_HEIGHT, tft.background);
+        tft.fillRect(col0 * ST7735_CHAR_WIDTH - 1, line0 * ST7735_CHAR_HEIGHT - 1,
+                     (col0 + totalColumns) * ST7735_CHAR_WIDTH, (line0 + totalLines) * ST7735_CHAR_HEIGHT, tft.background);
 #else
-    tft.fillRect(col * TFT_CHAR_WIDTH - 1, line * TFT_CHAR_HEIGHT - 1, (col + 15) * TFT_CHAR_WIDTH, (line + 12) * TFT_CHAR_HEIGHT, tft.background);
+        st7735.fillRect(col * ST7735_CHAR_WIDTH - 1, line * ST7735_CHAR_HEIGHT - 1, (col + 15) * ST7735_CHAR_WIDTH, (line + 12) * ST7735_CHAR_HEIGHT, st7735.background);
 #endif
 
         int line = line0;
@@ -358,15 +448,15 @@ int main() {
         tft.gotoCharXY(col, line++);                                 // position text cursor
         uint32_t end = time();
         tft.write(" TIME ");
-        tft.write(end - start);
+        tft.write((int)(end - start));
 #endif
 
         tft.gotoCharXY(col, line++);                                 // position text cursor
         tft.write("---------------");
 
-//        tft.sendCmd((iter & 1) ? IDMON : IDMOFF);   // take display out of sleep mode
+//        st7735.sendCmd((iter & 1) ? IDMON : IDMOFF);   // take display out of sleep mode
         msDelay(1000);
-//        tft.sendCmd(IDMOFF);   // take display out of sleep mode
+//        st7735.sendCmd(IDMOFF);   // take display out of sleep mode
     }
 #pragma clang diagnostic pop
 

@@ -1,20 +1,21 @@
 cmake_minimum_required(VERSION 2.8.4)
 set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/cmake/ArduinoToolchain.cmake)
+set(CMAKE_CXX_STANDARD 98)
 
-set(PROJECT_NAME tft18)
+set(PROJECT_NAME st7735)
 set(${CMAKE_PROJECT_NAME}_BOARD pro)
 set(ARDUINO_CPU 8MHzatmega328)
 
 project(${PROJECT_NAME})
 
 # Define the source code for cpp files or default arduino sketch files
-set(${PROJECT_NAME}_SRCS tft18.cpp)
-set(${PROJECT_NAME}_HDRS tft18.h)
+set(${PROJECT_NAME}_SRCS st7735.cpp)
+set(${PROJECT_NAME}_HDRS st7735.h)
 ### Additional static libraries to include in the target.
 #set(${CMAKE_PROJECT_NAME}_LIBS/..)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 
-set(${CMAKE_PROJECT_NAME}_SKETCH tft18_test.ino)
+set(${CMAKE_PROJECT_NAME}_SKETCH st7735_test.ino)
 
 #### Additional settings for programmer. From programmers.txt
 set(${CMAKE_PROJECT_NAME}_PROGRAMMER avrispmkii)

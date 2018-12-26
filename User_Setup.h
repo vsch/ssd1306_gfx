@@ -1,4 +1,0 @@
-#ifndef TFT18_USER_SETUP_H
-#define TFT18_USER_SETUP_H
-
-#endif //TFT18_USER_SETUP_H

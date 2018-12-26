@@ -4,18 +4,14 @@
 #include "Arduino.h"
 #include <stdlib.h>
 
-// Include header file that defines the fonts loaded and the pins to be used
-#include "User_Setup.h"
+#define RGB565(r, g, b) ((color_t)((((r) & 0xF8) << 8) | (((g) & 0xFC) << 3) | ((b) & 0xF8) >> 3))
+#define RGB666(r, g, b) ((int32_t)(static_cast<uint8_t>(r) << 16 | static_cast<uint8_t>(g) << 8 | static_cast<uint8_t>(b)))
 
-#define RGB565(r, g, b) ((uint16_t)((((r) & 0xF8) << 8) | ((int)((g) & 0xFC) << 3) | (((b) & 0xF8) >> 3)))
+#define RGB565_TO_RGB888(c) (((int32_t)((c) & 0xF800) << 8) | (((int32_t)((c) & 0x07E0) << 5)) | (((int32_t)((c) & 0x001F) << 1)))
 
-#define RGB666(r, g, b) ((uint8_t)(r) << 16 | (uint8_t)(g) << 8 | (uint8)(b))
-
-#define RGB565_TO_RGB888(c) (((long)((c) & 0xF800) << 8) | (((long)((c) & 0x07E0) << 5)) | (((long)((c) & 0x001F) << 1)))
-
-#define RGB565_RED(c) ((uint8_t)(c >> 8) & (uint8_t)0xF8)
-#define RGB565_GREEN(c) ((uint8_t)(c >> 3) & (uint8_t)0xFC)
-#define RGB565_BLUE(c) ((uint8_t)(c << 3) & (uint8_t)0xF8)
+#define RGB565_RED(c) (static_cast<uint8_t>((static_cast<uint16_t>(c) >> 8) & static_cast<uint8_t>(0xF8)))
+#define RGB565_GREEN(c) (static_cast<uint8_t>((static_cast<uint16_t>(c) >> 3) & static_cast<uint8_t>(0xFC)))
+#define RGB565_BLUE(c) (static_cast<uint8_t>((static_cast<uint16_t>(c) << 3) & static_cast<uint8_t>(0xF8)))
 
 #ifndef clearBit
 #define clearBit(x, y) (x &= ~_BV(y))     // equivalent to cbi(x,y)
@@ -26,35 +22,35 @@
 #endif setBit
 
 // DC 8
-#define TFT_DC_PORT  PORTD
-#define TFT_DC_BIT   5
-#define TFT_DC       TFT_DC_PORT,TFT_DC_BIT
+#define ST7735_DC_PORT  PORTD
+#define ST7735_DC_BIT   5
+#define ST7735_DC       ST7735_DC_PORT,ST7735_DC_BIT
 
 // DC 9
-#define TFT_RST_PORT PORTB
-#define TFT_RST_BIT  1
-#define TFT_RST       TFT_RST_PORT,TFT_RST_BIT
+#define ST7735_RST_PORT PORTB
+#define ST7735_RST_BIT  1
+#define ST7735_RST       ST7735_RST_PORT,ST7735_RST_BIT
 
 // DC 10
-#define TFT_CS_PORT  PORTB
-#define TFT_CS_BIT   2
-#define TFT_CS       TFT_CS_PORT,TFT_CS_BIT
+#define ST7735_CS_PORT  PORTB
+#define ST7735_CS_BIT   2
+#define ST7735_CS       ST7735_CS_PORT,ST7735_CS_BIT
 
 // DC 11
-#define TFT_MOSI_PORT PORTB
-#define TFT_MOSI_BIT  3
-#define TFT_MOSI       TFT_MOSI_PORT,TFT_MOSI_BIT
+#define ST7735_MOSI_PORT PORTB
+#define ST7735_MOSI_BIT  3
+#define ST7735_MOSI       ST7735_MOSI_PORT,ST7735_MOSI_BIT
 
 // so we can turn off SPI and use these manually to try and read pixels
 // DC 12
-#define TFT_MISO_PORT PORTB
-#define TFT_MISO_BIT  4
-#define TFT_MISO       TFT_MISO_PORT,TFT_MISO_BIT
+#define ST7735_MISO_PORT PORTB
+#define ST7735_MISO_BIT  4
+#define ST7735_MISO       ST7735_MISO_PORT,ST7735_MISO_BIT
 
 // DC 13
-#define TFT_SCK_PORT  PORTB
-#define TFT_SCK_BIT   5
-#define TFT_SCK       TFT_SCK_PORT,TFT_SCK_BIT
+#define ST7735_SCK_PORT  PORTB
+#define ST7735_SCK_BIT   5
+#define ST7735_SCK       ST7735_SCK_PORT,ST7735_SCK_BIT
 
 // ---------------------------------------------------------------------------
 // ST7735 ROUTINES
@@ -86,14 +82,16 @@
 
 #define RDDCOLMOD   0x0C        // read pixel format
 
-// 1.8" TFT display constants
-#define TFT_XSIZE   128
-#define TFT_YSIZE   160
+// TFT display constants, defaults
+#define ST7735_XSIZE   128
+#define ST7735_YSIZE   160
+#define ST7735_XOFFSET 0
+#define ST7735_YOFFSET 0
 
-#define TFT_CHAR_X_PIXELS 5
-#define TFT_CHAR_Y_PIXELS 7
-#define TFT_CHAR_WIDTH (TFT_CHAR_X_PIXELS+1)
-#define TFT_CHAR_HEIGHT (TFT_CHAR_Y_PIXELS+1)
+#define ST7735_CHAR_X_PIXELS 5
+#define ST7735_CHAR_Y_PIXELS 7
+#define ST7735_CHAR_WIDTH (ST7735_CHAR_X_PIXELS+1)
+#define ST7735_CHAR_HEIGHT (ST7735_CHAR_Y_PIXELS+1)
 
 // mode 5 = 16bit pixels (RGB565)
 // mode 6 = 18bit pixels (RGB666)
@@ -103,49 +101,86 @@
 #define GAMSET_PARAM 1
 
 #if COLMOD_PARAM == 5
-#define RGB(r, g, b) RGB565(r,g,b)
+#define _RGB(r, g, b) RGB565(r, g, b)
+typedef uint16_t color_t;
 #else
-#define RGB(r,g,b) RGB666(r,g,b)
+#define _RGB(r, g, b) RGB666(r, g, b)
+typedef uint32_t color_t;
 #endif
 
-typedef uint16_t color_t;
 typedef uint8_t alpha_t;
 
 // Color constants
-#define BLACK   RGB(0,0,0)
-#define BLUE    RGB(0,0,255)
-#define RED     RGB(255,0,0)
-#define GREEN   RGB(0,255,0)
-#define LIME    RGB(128,255,0)
-#define CYAN    RGB(0,255,255)
-#define MAGENTA RGB(255,0,255)
-#define YELLOW  RGB(255,255,0)
-#define WHITE   RGB(255,255,255)
+#define RGB_BLACK   _RGB(0,0,0)
+#define RGB_WHITE   _RGB(255,255,255)
 
-#define TFT_ROT_0     0
-#define TFT_ROT_90    1
-#define TFT_ROT_180   2
-#define TFT_ROT_270   3
+#define ST7735_ROT_0     0
+#define ST7735_ROT_90    1
+#define ST7735_ROT_180   2
+#define ST7735_ROT_270   3
 
-class Tft18
+#define ST7735_INVERTED  0x80 // display color is inverted when inversion is off
+#define ST7735_BGR       0x40 // BGR color order
+
+#define ST7735_SIZE(displayType)      ((displayType) & 0x0f)
+#define ST7735_IS_BGR(displayType)      ((displayType) & (ST7735_BGR))
+
+// TFT 1.8 128 x 160
+#define ST7735_SIZE_180  0x00
+// TFT 1.8  80 x 160
+#define ST7735_SIZE_096  0x01
+
+// TFT 1.8 128 x 160
+#define ST7735_TYPE_180  (ST7735_SIZE_180)
+// OLED 096  80 x 160
+#define ST7735_TYPE_OLED_096  ((ST7735_SIZE_096) | (ST7735_INVERTED) | (ST7735_BGR))
+
+// 1.8" TFT display constants
+#define ST7735_180_XSIZE   ST7735_XSIZE
+#define ST7735_180_YSIZE   ST7735_YSIZE
+#define ST7735_180_XOFFSET ST7735_XOFFSET
+#define ST7735_180_YOFFSET ST7735_YOFFSET
+
+// TFT096 values
+#define ST7735_096_XSIZE   80
+#define ST7735_096_YSIZE   160
+#define ST7735_096_XOFFSET 26
+#define ST7735_096_YOFFSET 1
+
+class St7735
 {
 public:
-    int maxX;
-    int maxY;
+    uint8_t flags;
+    uint16_t maxX;
+    uint16_t maxY;
+    uint8_t offsetX;
+    uint8_t offsetY;
 
     color_t foreground;
     color_t background;
     alpha_t alpha;
 
-    int colOffset;      // max columns
-    int rowOffset;      // max rows
-    uint8_t col;        // current column
-    uint8_t row;        // current row
-    uint8_t maxCol;
-    uint8_t maxRow;
+    uint8_t colOffset;      // char column pixel offset
+    uint8_t rowOffset;      // char row pixel offset
+    int16_t col;            // current column
+    int16_t row;            // current row
+    uint8_t maxCols;
+    uint8_t maxRows;
 
-    explicit Tft18();
-    void setOrientation(int rot);
+    // with type conversions
+    explicit St7735(uint8_t typeFlags = 0);
+    void setOrientation(uint8_t rot);
+    void initDisplay(uint8_t rot);
+    void setInverted();
+    void clearInverted();
+
+    // raw, no type conversions
+    void initDisplay(uint8_t rot, uint16_t xSize, uint16_t ySize, uint8_t xOffset, uint8_t yOffset, int8_t inversion);
+    void setOrientation(uint8_t rot, uint16_t xSize, uint16_t ySize, uint8_t xOffset, uint8_t yOffset);
+
+    bool isBGR();
+    color_t rgb(uint8_t r, uint8_t g, uint8_t b);
+
     void setGama(uint8_t gama);
     void sendByte(uint8_t byte);
     void sendCmd(uint8_t cmd);
@@ -154,7 +189,6 @@ public:
     void sendColors(color_t color, uint16_t count);
     void send565(color_t color, uint16_t count);
     void hardwareReset();
-    void initDisplay(uint8_t rot = TFT_ROT_0);
     void sendSetAddrWindow(int x0, int y0, int x1, int y1);
     void clearScreen();
     void setPixel(int x, int y, color_t color, alpha_t alpha);
@@ -171,7 +205,7 @@ public:
     void fillCircle(int xPos, int yPos, int radius, color_t color);
     void ellipse(int x0, int y0, int width, int height, color_t color);
     void fillEllipse(int xPos, int yPos, int width, int height, color_t color);
-    void charOffset(int x, int y);
+    void charOffset(uint8_t x, uint8_t y);
     void gotoCharXY(int col, int row);
     void advanceCursor();
     void putCh(char ch, int x, int y);
