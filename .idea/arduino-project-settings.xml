@@ -3,5 +3,6 @@
   <component name="Arduino Project Settings">
     <option name="baudRate" value="57600" />
     <option name="port" value="/dev/cu.usbserial-00000000" />
+    <option name="showSendOptions" value="false" />
   </component>
 </project>

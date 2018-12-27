@@ -54,13 +54,13 @@
 
 // ---------------------------------------------------------------------------
 // SSD1306 ROUTINES
-#define CONTRAST    0x81        // set contrast (2 bytes)
-#define DISP_ALLON  0xA5        // entire display on
-#define DISP_RAM    0xA4        // display ram buffer
-#define DISPOFF     0xAE        // display off
-#define DISPON      0xAF        // display on
-#define INVOFF      0xA6        // inv off
-#define INVON       0xA7        // inv on
+#define SSD1306_SETCONTRAST    0x81        // set contrast (2 bytes)
+#define SSD1306_DISPLAYALLON   0xA5                   // entire display on
+#define SSD1306_DISPLAYALLON_RESUME    0xA4        // display ram buffer
+#define SSD1306_DISPLAYOFF     0xAE        // display off
+#define SSD1306_DISPLAYON      0xAF        // display on
+#define SSD1306_NORMALDISPLAY      0xA6        // inv off
+#define SSD1306_INVERTDISPLAY       0xA7        // inv on
 
 #define HSCR_RIGHT  0x26        // horizontal scroll right (7 bytes)
 #define HSCR_LEFT   0x27        // horizontal scroll left  (7 bytes)
@@ -79,14 +79,14 @@
                                 // [4] - end page # 0..7 >= start page
                                 // [5] - vertical scrolling offset 0..63
 
-#define DEACT_SCR   0x2E        // deactivate scroll
+#define SSD1306_DEACTIVATE_SCROLL   0x2E        // deactivate scroll
 #define ACT_SCR     0x2E        // activate scroll
 
 #define VSCR_AREA   0xA3        // vertical scroll area (3 bytes)
                                 // [1] - no of rows fixed 0..63
                                 // [2] - no of rows scrolling 0..64
 
-#define ADDR_MODE   0x20        // set addressing mode (2 bytes)
+#define SSD1306_MEMORYMODE   0x20  // set addressing mode (2 bytes)
                                 // [1] - 0 - horizontal, 1 - vertical, 2 - page addressing, 3 - invalid
 
 #define PAGE_COLS   0x21        // set col start/end for horiz/vertical addressing mode (3 bytes)
@@ -102,14 +102,49 @@
 
 #define PAGE_START  0xB0        // set page start for page addressing mode (or with page # 0..7), B0 page 0, B1 page 1, B2 page, ... B7 page 7
 
-#define ROW_NORM    0xC0        // rows scanned normal
-#define ROW_REV     0xC8        // rows scanned reversed (vertical flip)
+#define SSD1306_COMSCANINC     0xC0        // rows scanned normal
+#define SSD1306_COMSCANDEC     0xC8        // rows scanned reversed (vertical flip)
 
-#define COL_NORM   0xA0        // columns scanned normal
-#define COL_REV    0xA1        // columns scanned reversed (horizontal flip)
+#define SSD1306_SEGREMAP_NORMAL      0xA0        // columns scanned normal
+#define SSD1306_SEGREMAP_REVERSED    0xA1        // columns scanned reversed (horizontal flip)
 
 #define DISP_OFFS   0xD3        // vertical shift (2 bytes)
                                 // [1] - veritcal offset 0..63
+
+#define DISP_CLK_DIV 0xD5       // display clock divide, 2 bytes
+                                // [1] - bits[0..3]+1 is divide ratio, default (0), bits[4..7] osc frequency default(8)
+
+#define SET_MULTIPLEX_RATIO  0xA8         // set multiplex ratio 2 bytes
+                                // [1] - 15..63,+1 is ratio, 0..14 invalid
+
+#define SSD1306_SETDISPLAYOFFSET 0xD3  // display offset 2 bytes
+                                // [1] - 0..63 display offset, default 0
+
+#define SSD1306_SETSTARTLINE   0x40 // 1 byte, bits[0..5] display offset
+#define SSD1306_CHARGEPUMP     0x8D // charge pump 2 bytes
+                                    // [1] - 0x10 disable, 0x14 enable
+#define SSD1306_CHARGEPUMP_ENABLE     0x14
+#define SSD1306_CHARGEPUMP_DISABLE    0x10
+
+#define SSD1306_SETCOMPINS 0xDA    // set com pins hardware config 2 bytes
+//A[1]=1b,
+//A[4]=0b, Sequential COM pin configuration A[4]=1b(RESET), Alternative COM pin configuration
+//A[5]=0b(RESET), Disable COM Left/Right remap
+//A[5]=1b, Enable COM Left/Right remap
+
+#define SSD1306_SETPRECHARGE  0xD9 // set precharge 2 bytes
+//A[3:0] : Phase 1 period of up to 15 DCLK clocks 0 is invalid entry
+//(RESET=2h)
+//A[7:4] : Phase 2 period of up to 15 DCLK clocks 0 is invalid entry
+//(RESET=2h )
+
+#define SSD1306_SETVCOMDETECT 0xDB  // Vcomh deselect level (2bytes)
+//| A[6:4] | Hex Byte | V COMH deselect level |
+//|--------|-----|-----------------------|
+//| 000b   | 00h | ~ 0.65 x VCC          |
+//| 010b   | 40h | ~ 0.77 x VCC (RESET)  |
+//| 011b   | 60h | ~ 0.83 x VCC          |
+
 
 // TFT display constants, defaults
 #define SSD1306_XSIZE   128
@@ -136,6 +171,7 @@ typedef uint8_t alpha_t;
 #define SSD1306_ROT_270   3
 
 #define SSD1306_INVERTED  0x80 // display color is inverted when inversion is off
+#define SSD1306_EXTERNALVCC  0x40 // external vcc, no charge pump
 
 #define SSD1306_SIZE(displayType)      ((displayType) & 0x0f)
 
@@ -166,10 +202,8 @@ class Ssd1306
 public:
     uint8_t flags;
 
-    uint16_t maxX;
-    uint16_t maxY;
-    uint8_t offsetX;
-    uint8_t offsetY;
+    uint8_t maxX;
+    uint8_t maxY;
 
     color_t foreground;
     color_t background;
@@ -181,16 +215,25 @@ public:
     uint8_t maxCols;
     uint8_t maxRows;
 
+    uint8_t pageStart;      // current refresh yStart of page
+    uint8_t *buffer;        // page buffer for paged drawing
+
     // with type conversions
-    explicit Ssd1306(uint8_t typeFlags = 0);
+    explicit Ssd1306(uint8_t *pageBuffer, uint8_t typeFlags = 0);
     void setOrientation(uint8_t rot);
     void initDisplay(uint8_t rot);
     void setInverted();
     void clearInverted();
 
     // raw, no type conversions
-    void initDisplay(uint8_t rot, uint16_t xSize, uint16_t ySize, uint8_t xOffset, uint8_t yOffset, int8_t inversion);
-    void setOrientation(uint8_t rot, uint16_t xSize, uint16_t ySize, uint8_t xOffset, uint8_t yOffset);
+    void initDisplay(uint8_t rot, uint8_t xSize, uint8_t ySize, uint8_t xOffset, uint8_t yOffset, int8_t inversion);
+    void setOrientation(uint8_t rot, uint8_t xSize, uint8_t ySize, uint8_t xOffset, uint8_t yOffset);
+
+    void startPage(uint8_t page);
+    void updatePage();
+
+    void startUpdate();
+    bool nextPage();
 
     bool isBGR();
     color_t rgb(uint8_t r, uint8_t g, uint8_t b);
@@ -201,18 +244,21 @@ public:
     void endCmd();
 
     void sendByte(uint8_t byte);
+    void sendBytes(uint8_t byte, uint16_t count);
+    void sendBytes(uint8_t *bytes, uint16_t count);
     void sendCmd(uint8_t cmd);
-    void sendWord(uint16_t word);
+    void sendCmdList(const uint8_t *p, uint8_t count);
+//    void sendWord(uint16_t word);
 
-    void sendColor(color_t color);
-    void sendColors(color_t color, uint16_t count);
-    void send565(color_t color, uint16_t count);
-    void sendSetAddrWindow(int x0, int y0, int x1, int y1);
+//    void sendColor(color_t color);
+//    void sendColors(color_t color, uint16_t count);
+//    void send565(color_t color, uint16_t count);
+    void sendSetAddrWindow(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);
 
     void clearScreen();
 
     void setPixel(int x, int y, color_t color);
-    void sendPixels(color_t color, uint16_t count);
+//    void sendPixels(color_t color, uint16_t count);
 
     void hLine(int x0, int x1, int y, color_t color);
     void vLine(int x, int y0, int y1, color_t color);
@@ -220,12 +266,12 @@ public:
     void rect(int x0, int y0, int x1, int y1, color_t color);
     void fillRect(int x0, int y0, int x1, int y1, color_t color);
 
-    void circleQuadrant(int xPos, int yPos, int radius, uint8_t quads, color_t color);
-    void circle(int xPos, int yPos, int radius, color_t color);
+    void circleQuadrant(int cx, int cy, int radius, uint8_t quads, color_t color);
+    void circle(int cx, int cy, int radius, color_t color);
     void roundRect(int x0, int y0, int x1, int y1, int r, color_t color);
-    void fillCircle(int xPos, int yPos, int radius, color_t color);
-    void ellipse(int x0, int y0, int width, int height, color_t color);
-    void fillEllipse(int xPos, int yPos, int width, int height, color_t color);
+    void fillCircle(int cx, int cy, int radius, color_t color);
+    void ellipse(int cx, int cy, int width, int height, color_t color);
+    void fillEllipse(int cx, int cy, int width, int height, color_t color);
 
     void charOffset(uint8_t x, uint8_t y);
     void gotoCharXY(int col, int row);
