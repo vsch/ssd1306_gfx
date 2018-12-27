@@ -1,8 +1,8 @@
-#include "st7735.h"
+#include "ssd1306.h"
 
 // Based on code from:
 //
-// TFT: Experiments interfacing ATmega328 to an ST7735 1.8" LCD TFT display
+// TFT: Experiments interfacing ATmega328 to an SSD1306 1.8" LCD TFT display
 // Author : Bruce E. Hall <bhall66@gmail.com>
 // Website : w8bh.net
 // Version : 1.0
@@ -18,7 +18,7 @@
 
 // ---------------------------------------------------------------------------
 // GLOBAL VARIABLES
-const uint8_t FONT_CHARS[96][ST7735_CHAR_X_PIXELS] PROGMEM = {
+const uint8_t FONT_CHARS[96][SSD1306_CHAR_X_PIXELS] PROGMEM = {
         0x00, 0x00, 0x00, 0x00, 0x00, // 0x20 - (space)
         0x00, 0x00, 0x5F, 0x00, 0x00, // 0x21 - !
         0x00, 0x07, 0x00, 0x07, 0x00, // 0x22 - "
@@ -142,157 +142,143 @@ const uint8_t FONT_CHARS[96][ST7735_CHAR_X_PIXELS] PROGMEM = {
 
 #define SPCR_NORMAL     0x50
 
-St7735::St7735(uint8_t typeFlags) {
+void Ssd1306::openSPI() {
+    SPCR = SPCR_NORMAL;       // SPI enabled as Master, Mode0 at 4 MHz
+    setBit(SPSR, SPI2X);      // double the SPI rate: 4-->8 MHz
+    clearBit(SSD1306_CS_PORT, SSD1306_CS_BIT);  // select TFT CS
+
+    clearBit(SSD1306_MOSI_PORT, SSD1306_MOSI_BIT); // disable pull up for PB3 MOSI when in input mode
+}
+
+void Ssd1306::closeSPI() {
+    SPCR = 0x00;                        // clear SPI enable bit
+    setBit(SSD1306_CS_PORT, SSD1306_CS_BIT);    // deselect TFT CS
+}
+
+Ssd1306::Ssd1306(uint8_t typeFlags) {
     flags = typeFlags;
 
     foreground = RGB_WHITE;
     background = RGB_BLACK;
-    alpha = 255;
 }
 
-void St7735::setOrientation(uint8_t rot) {
-    switch (ST7735_SIZE(flags)) {
-        case ST7735_SIZE_096:
-            setOrientation(rot, ST7735_096_XSIZE, ST7735_096_YSIZE, ST7735_096_XOFFSET, ST7735_096_YOFFSET);
+void Ssd1306::setOrientation(uint8_t rot) {
+    switch (SSD1306_SIZE(flags)) {
+        default:
+        case SSD1306_SIZE_096:
+            setOrientation(rot, SSD1306_096_XSIZE, SSD1306_096_YSIZE, SSD1306_096_XOFFSET, SSD1306_096_YOFFSET);
             break;
 
-        default:
-        case ST7735_SIZE_180:
-            setOrientation(rot, ST7735_180_XSIZE, ST7735_180_YSIZE, ST7735_180_XOFFSET, ST7735_180_YOFFSET);
+        case SSD1306_SIZE_091:
+            setOrientation(rot, SSD1306_091_XSIZE, SSD1306_091_YSIZE, SSD1306_091_XOFFSET, SSD1306_091_YOFFSET);
             break;
     }
 }
 
-void St7735::initDisplay(uint8_t rot) {
-    switch (ST7735_SIZE(flags)) {
-        case ST7735_SIZE_096:
-            initDisplay(rot, ST7735_096_XSIZE, ST7735_096_YSIZE, ST7735_096_XOFFSET, ST7735_096_YOFFSET,
-                        (flags & (uint8_t)(ST7735_INVERTED)) != 0);
+void Ssd1306::initDisplay(uint8_t rot) {
+    switch (SSD1306_SIZE(flags)) {
+        default:
+        case SSD1306_SIZE_096:
+            initDisplay(rot, SSD1306_096_XSIZE, SSD1306_096_YSIZE, SSD1306_096_XOFFSET, SSD1306_096_YOFFSET,
+                        (flags & (uint8_t)(SSD1306_INVERTED)) != 0);
             break;
 
-        default:
-        case ST7735_SIZE_180:
-            initDisplay(rot, ST7735_180_XSIZE, ST7735_180_YSIZE, ST7735_180_XOFFSET, ST7735_180_YOFFSET,
-                        (flags & (uint8_t)(ST7735_INVERTED)) != 0);
+        case SSD1306_SIZE_091:
+            initDisplay(rot, SSD1306_091_XSIZE, SSD1306_091_YSIZE, SSD1306_091_XOFFSET, SSD1306_091_YOFFSET,
+                        (flags & (uint8_t)(SSD1306_INVERTED)) != 0);
             break;
     }
 }
 
-void St7735::setInverted() {
-    sendCmd((uint8_t)((flags & ST7735_INVERTED) ? INVOFF : INVON));
+void Ssd1306::setInverted() {
+    sendCmd((uint8_t)((flags & SSD1306_INVERTED) ? INVOFF : INVON));
 }
 
-void St7735::clearInverted() {
-    sendCmd((uint8_t)((flags & ST7735_INVERTED) ? INVON : INVOFF));
+void Ssd1306::clearInverted() {
+    sendCmd((uint8_t)((flags & SSD1306_INVERTED) ? INVON : INVOFF));
 }
 
 // Set the display orientation to 0,90,180,or 270 degrees
-void St7735::setOrientation(uint8_t rot, uint16_t xSize, uint16_t ySize, uint8_t xOffset, uint8_t yOffset) {
-    uint8_t arg;
+void Ssd1306::setOrientation(uint8_t rot, uint16_t xSize, uint16_t ySize, uint8_t xOffset, uint8_t yOffset) {
+    int8_t invX;
+    int8_t invY;
     switch (rot) {
-        case ST7735_ROT_90:
-        case ST7735_ROT_270:
-            arg = (uint8_t)((rot == ST7735_ROT_90) ? 0x60 : 0xA0);
+        case SSD1306_ROT_90:
+        case SSD1306_ROT_270:
+            invX = false;
+            invY = true;
             maxX = ySize;
             maxY = xSize;
             offsetX = yOffset;
             offsetY = xOffset;
             break;
 
-        case ST7735_ROT_180:
-        case ST7735_ROT_0:
+        case SSD1306_ROT_180:
+        case SSD1306_ROT_0:
         default:
-            arg = (uint8_t)((rot == ST7735_ROT_180) ? 0xC0 : 0x00);
+            invX = rot == SSD1306_ROT_180;
+            invY = invX;
             maxX = xSize;
             maxY = ySize;
             offsetX = xOffset;
             offsetY = yOffset;
             break;
     }
-    sendCmd(MADCTL);
-    sendByte(arg);
+
+    sendCmd(invX ? COL_REV : COL_NORM);
+    sendCmd(invY ? ROW_REV : ROW_NORM);
 
     charOffset(0, 0);
 }
 
 void
-St7735::initDisplay(uint8_t rot, uint16_t xSize, uint16_t ySize, uint8_t xOffset, uint8_t yOffset, int8_t inversion) {
+Ssd1306::initDisplay(uint8_t rot, uint16_t xSize, uint16_t ySize, uint8_t xOffset, uint8_t yOffset, int8_t inversion) {
     hardwareReset();            // initialize display controller
-    _delay_ms(150);               // wait 150mS for TFT driver circuits
-    sendCmd(SLPOUT);           // take display out of sleep mode
-    sendCmd(COLMOD);           // select color mode:
-    sendByte(COLMOD_PARAM);    // mode 5 = 16bit pixels (RGB565)
-    sendCmd(GAMSET);           // select gama
-    sendByte(GAMSET_PARAM);
-    sendCmd((uint8_t)(inversion ? INVON : INVOFF));
-    sendCmd(DISPON);           // turn display on!
-    setOrientation(rot, xSize, ySize, xOffset, yOffset);
+    sendCmd(DISPON);            // take display out of sleep mode
+    _delay_ms(100);             // wait 100mS for reset to finish
+    sendCmd(DISP_ALLON);        // set all on
+//    sendCmd((uint8_t)(inversion ? INVON : INVOFF));
+    sendCmd(INVOFF);
+    startCmd(ADDR_MODE);
+    sendByte(0);                // horizontal addressing mode
+    endCmd();
+//     setOrientation(rot, xSize, ySize, xOffset, yOffset);
 }
 
-void St7735::setGama(uint8_t gama) {
-    gama &= 0x0f;
-    if (!gama) {
-        gama = 1;
-    }
-
-    sendCmd(GAMSET);       // select gama
-    sendByte(gama);
-}
-
-void St7735::openSPI() {
-    SPCR = SPCR_NORMAL;       // SPI enabled as Master, Mode0 at 4 MHz
-    setBit(SPSR, SPI2X);      // double the SPI rate: 4-->8 MHz
-    clearBit(ST7735_CS_PORT, ST7735_CS_BIT);  // select TFT CS
-
-    clearBit(ST7735_MOSI_PORT, ST7735_MOSI_BIT); // disable pull up for PB3 MOSI when in input mode
-}
-
-void St7735::closeSPI() {
-    SPCR = 0x00;                        // clear SPI enable bit
-    setBit(ST7735_CS_PORT, ST7735_CS_BIT);    // deselect TFT CS
-}
-
-void St7735::sendByte(uint8_t byte) {
+void Ssd1306::sendByte(uint8_t byte) {
     SPDR = byte;            // initiate transfer
     while (!(SPSR & 0x80)); // wait for transfer to complete
 }
 
-void St7735::sendCmd(uint8_t cmd) {
-//    setBit(ST7735_CS_PORT, ST7735_CS);      // deselect TFT CS
-    clearBit(ST7735_DC_PORT, ST7735_DC_BIT);  // B1=DC; 0=command, 1=data
-//    clearBit(ST7735_CS_PORT, ST7735_CS);  // select TFT CS
+void Ssd1306::startCmd(uint8_t cmd) {
+    clearBit(SSD1306_DC_PORT, SSD1306_DC_BIT);  // B1=DC; 0=command, 1=data
     sendByte(cmd);
-    setBit(ST7735_DC_PORT, ST7735_DC_BIT); // return DC high
 }
 
-void St7735::sendWord(uint16_t word) {
+void Ssd1306::endCmd() {
+    setBit(SSD1306_DC_PORT, SSD1306_DC_BIT); // return DC high
+}
+
+void Ssd1306::sendCmd(uint8_t cmd) {
+    startCmd(cmd);
+    endCmd();
+}
+
+void Ssd1306::sendWord(uint16_t word) {
     SPDR = static_cast<uint8_t>(word >> 8); // write hi uint8_t
     while (!(SPSR & 0x80)); // wait for transfer to complete
     SPDR = static_cast<uint8_t>(word & 0xFF); // write lo uint8_t
     while (!(SPSR & 0x80)); // wait for transfer to complete
 }
 
-void St7735::sendColor(color_t color) {
-#if COLMOD_PARAM == 5
+void Ssd1306::sendColor(color_t color) {
     SPDR = static_cast<uint8_t>(color >> 8); // write hi uint8_t
     while (!(SPSR & 0x80)); // wait for transfer to complete
     SPDR = static_cast<uint8_t>(color & 0xFF); // write lo uint8_t
     while (!(SPSR & 0x80)); // wait for transfer to complete
-#else
-    uint8_t cBlue = color << 3;
-    uint8_t cGreen = (color >> 3) & 0xFC;
-    uint8_t cRed = (color >> 8) & 0xF8;
-    SPDR = cRed; // write hi uint8_t
-    while (!(SPSR & 0x80)); // wait for transfer to complete
-    SPDR = cGreen; // write lo uint8_t
-    while (!(SPSR & 0x80)); // wait for transfer to complete
-    SPDR = cBlue; // write lo uint8_t
-    while (!(SPSR & 0x80)); // wait for transfer to complete
-#endif
 }
 
-void St7735::sendColors(color_t color, uint16_t count) {
-#if COLMOD_PARAM == 5
+void Ssd1306::sendColors(color_t color, uint16_t count) {
     uint8_t byte1 = static_cast<uint8_t>(color >> 8); // write hi uint8_t
     uint8_t byte2 = static_cast<uint8_t>(color & 0xFF); // write low uint8_t
     while (count--) {
@@ -301,59 +287,41 @@ void St7735::sendColors(color_t color, uint16_t count) {
         SPDR = byte2; // write lo uint8_t
         while (!(SPSR & 0x80)); // wait for transfer to complete
     }
-#else
-    while (count--) {
-    uint8_t cBlue = color << 3;
-    uint8_t cGreen = (color >> 3) & 0xFC;
-    uint8_t cRed = (color >> 8) & 0xF8;
-    SPDR = cRed; // write hi uint8_t
-    while (!(SPSR & 0x80)); // wait for transfer to complete
-    SPDR = cGreen; // write lo uint8_t
-    while (!(SPSR & 0x80)); // wait for transfer to complete
-    SPDR = cBlue; // write lo uint8_t
-    while (!(SPSR & 0x80)); // wait for transfer to complete
-    }
-#endif
 }
 
 // send 16-bit pixel data to the controller
 // note: inlined spi xfer for optimization
-void St7735::send565(color_t color, uint16_t count) {
-    sendCmd(RAMWR);
+void Ssd1306::send565(color_t color, uint16_t count) {
+//    sendCmd(RAMWR);
     sendColors(color, count);
 }
 
-void St7735::hardwareReset() {
-    clearBit(ST7735_RST_PORT, ST7735_RST_BIT);        // pull PB0 (digital 8) low
-    _delay_ms(1);                               // 1mS is enough
-    setBit(ST7735_RST_PORT, ST7735_RST_BIT);          // return PB0 high
-    _delay_ms(150);                             // wait 150mS for reset to finish
+void Ssd1306::hardwareReset() {
+    clearBit(SSD1306_RST_PORT, SSD1306_RST_BIT);        // pull PB0 (digital 8) low
+    _delay_us(10);                                      // 10uS is enough
+    setBit(SSD1306_RST_PORT, SSD1306_RST_BIT);          // return PB0 high
 }
 
-void St7735::sendSetAddrWindow(int x0, int y0, int x1, int y1) {
-    sendCmd(CASET);      // set column range (x0,x1)
-    sendWord(static_cast<uint16_t>(x0 + offsetX));
-    sendWord(static_cast<uint16_t>(x1 + offsetX));
-    sendCmd(RASET);      // set row range (y0,y1)
-    sendWord(static_cast<uint16_t>(y0 + offsetY));
-    sendWord(static_cast<uint16_t>(y1 + offsetY));
+void Ssd1306::sendSetAddrWindow(int x0, int y0, int x1, int y1) {
+    startCmd(PAGE_COLS);      // set column range (x0,x1)
+    sendByte(static_cast<uint8_t>(x0 + offsetX));
+    sendByte(static_cast<uint8_t>(x1 + offsetX));
+    startCmd(PAGE_ADDR);      // set row start (y0,y1)
+    sendByte(static_cast<uint8_t>(y0 + offsetY));
+    sendByte(static_cast<uint8_t>(y1 + offsetY));
+    endCmd();
 }
 
-void St7735::clearScreen() {
+void Ssd1306::clearScreen() {
     sendSetAddrWindow(0, 0, maxX - 1, maxY - 1); // set window to entire display
-    sendCmd(RAMWR);
     sendColors(background, static_cast<uint16_t>(maxX * maxY));
 }
 
-bool St7735::isBGR() {
-    return (flags & ST7735_BGR) != 0;
+bool Ssd1306::isBGR() {
+    return false;
 }
 
-uint16_t St7735::rgb(uint8_t r, uint8_t g, uint8_t b) {
-    if ((flags & ST7735_BGR) != 0) {
-        // swap R & B
-        return _RGB(b, g, r);
-    }
+color_t Ssd1306::rgb(uint8_t r, uint8_t g, uint8_t b) {
     return _RGB(r, g, b);
 }
 
@@ -362,115 +330,68 @@ uint16_t St7735::rgb(uint8_t r, uint8_t g, uint8_t b) {
 //
 // note: many routines have uint8_t parameters, to save space,
 // but these can easily be changed to int params for larger displays.
-uint8_t St7735::blend(uint8_t fore, uint8_t back, alpha_t alpha) {
-    if (alpha == 0) return back;
-    if (alpha == 255) return fore;
-
-    color_t color = (uint16_t)fore * alpha + (uint16_t)back * (255 - alpha);
-    return static_cast<uint8_t>(color >> 8);
-}
-
-uint16_t St7735::blendColors(color_t c1, color_t c2, alpha_t alpha) {
-    uint8_t bRed = blend(RGB565_RED(c1), RGB565_RED(c2), alpha);
-    uint8_t bGreen = blend(RGB565_GREEN(c1), RGB565_GREEN(c2), alpha);
-    uint8_t bBlue = blend(RGB565_BLUE(c1), RGB565_BLUE(c2), alpha);
-
-    return RGB565(bRed, bGreen, bBlue);
-}
 
 // draw pixel with alpha
 // if alpha < 16 then it is treated as fully transparent
 // if alpha >= 240 then it is treated as fully opaque
 // else the current pixel color is blended with given color using proportional component blending
-void St7735::setPixel(int x, int y, color_t color, alpha_t alpha) {
-    if (alpha >= 16) {
-        sendSetAddrWindow(x, y, x, y);
-        if (alpha >= 240) {
-            send565(color, 1);
-        } else {
-            send565(blendColors(color, background, alpha), 1);
-        }
-    }
+void Ssd1306::setPixel(int x, int y, color_t color) {
+    sendSetAddrWindow(x, y, x, y);
+    send565(color, 1);
 }
 
-void St7735::sendPixels(color_t color, alpha_t alpha, uint16_t count) {
-    if (alpha >= 16) {
-        if (alpha >= 240) {
-            send565(color, count);
-        } else {
-            send565(blendColors(color, background, alpha), count);
-        }
-    }
+void Ssd1306::sendPixels(color_t color, uint16_t count) {
+    send565(color, count);
 }
 
-void St7735::hLine(int x0, int x1, int y, color_t color) {
-    if (alpha >= 16) {
-        sendSetAddrWindow(x0, y, x1, y);
-        uint16_t width = static_cast<uint16_t>(x1 - x0 + 1);
-        if (alpha >= 240) {
-            send565(color, width);
-        } else {
-            sendPixels(color, alpha, width);
-        }
-    }
+void Ssd1306::hLine(int x0, int x1, int y, color_t color) {
+    sendSetAddrWindow(x0, y, x1, y);
+    uint16_t width = static_cast<uint16_t>(x1 - x0 + 1);
+    send565(color, width);
 }
 
 // draws a vertical line in given color
-void St7735::vLine(int x, int y0, int y1, color_t color) {
-    if (alpha >= 16) {
-        sendSetAddrWindow(x, y0, x, y1);
-        uint16_t height = static_cast<uint16_t>(y1 - y0 + 1);
-        if (alpha >= 240) {
-            send565(color, height);
-        } else {
-            sendPixels(color, alpha, height);
-        }
-    }
+void Ssd1306::vLine(int x, int y0, int y1, color_t color) {
+    sendSetAddrWindow(x, y0, x, y1);
+    uint16_t height = static_cast<uint16_t>(y1 - y0 + 1);
+    send565(color, height);
 }
 
 // an elegant implementation of the Bresenham algorithm, with alpha
-void St7735::line(int x0, int y0, int x1, int y1, color_t color) {
-    if (alpha >= 16) {
-        int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-        int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-        int err = (dx > dy ? dx : -dy) / 2, e2;
-        for (;;) {
-            setPixel(x0, y0, color, alpha);
-            if (x0 == x1 && y0 == y1) break;
-            e2 = err;
-            if (e2 > -dx) {
-                err -= dy;
-                x0 += sx;
-            }
-            if (e2 < dy) {
-                err += dx;
-                y0 += sy;
-            }
+void Ssd1306::line(int x0, int y0, int x1, int y1, color_t color) {
+    int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+    int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+    int err = (dx > dy ? dx : -dy) / 2, e2;
+    for (;;) {
+        setPixel(x0, y0, color);
+        if (x0 == x1 && y0 == y1) break;
+        e2 = err;
+        if (e2 > -dx) {
+            err -= dy;
+            x0 += sx;
+        }
+        if (e2 < dy) {
+            err += dx;
+            y0 += sy;
         }
     }
 }
 
 // draws a rectangle in given color
-void St7735::rect(int x0, int y0, int x1, int y1, color_t color) {
+void Ssd1306::rect(int x0, int y0, int x1, int y1, color_t color) {
     hLine(x0, x1, y0, color);
     hLine(x0, x1, y1, color);
     vLine(x0, y0, y1, color);
     vLine(x1, y0, y1, color);
 }
 
-void St7735::fillRect(int x0, int y0, int x1, int y1, color_t color) {
-    if (alpha >= 16) {
-        sendSetAddrWindow(x0, y0, x1, y1);
-        uint16_t area = static_cast<uint16_t>((x1 - x0 + 1) * (y1 - y0 + 1));
-        if (alpha >= 240) {
-            send565(color, area);
-        } else {
-            sendPixels(color, alpha, area);
-        }
-    }
+void Ssd1306::fillRect(int x0, int y0, int x1, int y1, color_t color) {
+    sendSetAddrWindow(x0, y0, x1, y1);
+    uint16_t area = static_cast<uint16_t>((x1 - x0 + 1) * (y1 - y0 + 1));
+    send565(color, area);
 }
 
-int St7735::intSqrt(long val) {
+int Ssd1306::intSqrt(long val) {
     long mulMask = 0x0008000;
     int retVal = 0;
     if (val > 0) {
@@ -490,38 +411,38 @@ int St7735::intSqrt(long val) {
 // bit 1: draw quadrant IV (upper right)
 // bit 2: draw quadrant II (lower left)
 // bit 3: draw quadrant III (upper left)
-void St7735::circleQuadrant(int xPos, int yPos, int radius, uint8_t quads, color_t color) {
+void Ssd1306::circleQuadrant(int xPos, int yPos, int radius, uint8_t quads, color_t color) {
     int x, xEnd = (707 * radius) / 1000 + 1;
     long r2 = (long)radius * radius;
     for (x = 0; x < xEnd; x++) {
         int y = intSqrt(r2 - x * x);
         if (quads & 0x01) {
-            setPixel(xPos + x, yPos + y, color, alpha);   // lower right
-            setPixel(xPos + y, yPos + x, color, alpha);
+            setPixel(xPos + x, yPos + y, color);   // lower right
+            setPixel(xPos + y, yPos + x, color);
         }
         if (quads & 0x02) {
-            setPixel(xPos + x, yPos - y, color, alpha);  // upper right
-            setPixel(xPos + y, yPos - x, color, alpha);
+            setPixel(xPos + x, yPos - y, color);  // upper right
+            setPixel(xPos + y, yPos - x, color);
         }
         if (quads & 0x04) {
-            setPixel(xPos - x, yPos + y, color, alpha);  // lower left
-            setPixel(xPos - y, yPos + x, color, alpha);
+            setPixel(xPos - x, yPos + y, color);  // lower left
+            setPixel(xPos - y, yPos + x, color);
         }
         if (quads & 0x08) {
-            setPixel(xPos - x, yPos - y, color, alpha);  // upper left
-            setPixel(xPos - y, yPos - x, color, alpha);
+            setPixel(xPos - x, yPos - y, color);  // upper left
+            setPixel(xPos - y, yPos - x, color);
         }
     }
 }
 
 // draws circle at x,y with given radius & color
-void St7735::circle(int xPos, int yPos, int radius, color_t color) {
+void Ssd1306::circle(int xPos, int yPos, int radius, color_t color) {
     circleQuadrant(xPos, yPos, radius, 0x0F, color); // do all 4 quadrants
 }
 
 // draws a rounded rectangle with corner radius r.
 // coordinates: top left = x0,y0; bottom right = x1,y1
-void St7735::roundRect(int x0, int y0, int x1, int y1, int r, color_t color) {
+void Ssd1306::roundRect(int x0, int y0, int x1, int y1, int r, color_t color) {
     hLine(x0 + r, x1 - r, y0, color); // top side
     hLine(x0 + r, x1 - r, y1, color); // bottom side
     vLine(x0, y0 + r, y1 - r, color); // left side
@@ -533,7 +454,7 @@ void St7735::roundRect(int x0, int y0, int x1, int y1, int r, color_t color) {
 }
 
 // draws filled circle at x,y with given radius & color
-void St7735::fillCircle(int xPos, int yPos, int radius, color_t color) {
+void Ssd1306::fillCircle(int xPos, int yPos, int radius, color_t color) {
     long r2 = radius * radius;
     for (int x = 0; x <= radius; x++) {
         int y = intSqrt(r2 - x * x);
@@ -547,7 +468,7 @@ void St7735::fillCircle(int xPos, int yPos, int radius, color_t color) {
 // draws an ellipse of given width & height
 // two-part Bresenham method
 // note: slight discontinuity between parts on some (narrow) ellipses.
-void St7735::ellipse(int x0, int y0, int width, int height, color_t color) {
+void Ssd1306::ellipse(int x0, int y0, int width, int height, color_t color) {
     int a = width >> 1, b = height >> 1;
     int x = 0, y = b;
     long a2 = a * a * 2;
@@ -555,10 +476,10 @@ void St7735::ellipse(int x0, int y0, int width, int height, color_t color) {
     long error = (long)a * a * b;
     long stopY = 0, stopX = a2 * b;
     while (stopY <= stopX) {
-        setPixel(x0 + x, y0 + y, color, alpha);
-        setPixel(x0 + x, y0 - y, color, alpha);
-        setPixel(x0 - x, y0 + y, color, alpha);
-        setPixel(x0 - x, y0 - y, color, alpha);
+        setPixel(x0 + x, y0 + y, color);
+        setPixel(x0 + x, y0 - y, color);
+        setPixel(x0 - x, y0 + y, color);
+        setPixel(x0 - x, y0 - y, color);
         x++;
         error -= b2 * (x - 1);
         stopY += b2;
@@ -574,10 +495,10 @@ void St7735::ellipse(int x0, int y0, int width, int height, color_t color) {
     stopY = a * b2;
     stopX = 0;
     while (stopY >= stopX) {
-        setPixel(x0 + x, y0 + y, color, alpha);
-        setPixel(x0 + x, y0 - y, color, alpha);
-        setPixel(x0 - x, y0 + y, color, alpha);
-        setPixel(x0 - x, y0 - y, color, alpha);
+        setPixel(x0 + x, y0 + y, color);
+        setPixel(x0 + x, y0 - y, color);
+        setPixel(x0 - x, y0 + y, color);
+        setPixel(x0 - x, y0 - y, color);
         y++;
         error -= a2 * (y - 1);
         stopX += a2;
@@ -590,7 +511,7 @@ void St7735::ellipse(int x0, int y0, int width, int height, color_t color) {
 }
 
 // draws a filled ellipse of given width & height
-void St7735::fillEllipse(int xPos, int yPos, int width, int height, color_t color) {
+void Ssd1306::fillEllipse(int xPos, int yPos, int width, int height, color_t color) {
     int a = width >> 1, b = height >> 1; // get x & y radii
     int x1, x0 = a, y = 1;
     int dx = 0;
@@ -625,21 +546,21 @@ void St7735::fillEllipse(int xPos, int yPos, int width, int height, color_t colo
 //    Display height is 128, so there are 16 rows (16x8 = 128).
 //    Total number of characters in landscape mode = 26x16 = 416.
 
-void St7735::charOffset(uint8_t x, uint8_t y) {
+void Ssd1306::charOffset(uint8_t x, uint8_t y) {
     colOffset = static_cast<uint8_t>(x);
     rowOffset = static_cast<uint8_t>(y);
-    maxCols = static_cast<uint8_t>((maxX - x) / ST7735_CHAR_WIDTH);
-    maxRows = static_cast<uint8_t>((maxY - y) / ST7735_CHAR_HEIGHT);
+    maxCols = static_cast<uint8_t>((maxX - x) / SSD1306_CHAR_WIDTH);
+    maxRows = static_cast<uint8_t>((maxY - y) / SSD1306_CHAR_HEIGHT);
 }
 
 // position cursor on character x,y grid, where 0<x<20, 0<y<19.
-void St7735::gotoCharXY(int col, int row) {
+void Ssd1306::gotoCharXY(int col, int row) {
     this->col = static_cast<int16_t>(col);
     this->row = static_cast<int16_t>(row);
 }
 
 // moves character cursor to next position, assuming portrait orientation
-void St7735::advanceCursor() {
+void Ssd1306::advanceCursor() {
     col++;             // advance x position
     if (col > maxCols) {    // beyond right margin?
         row++;         // go to next line
@@ -654,17 +575,16 @@ void St7735::advanceCursor() {
 #define OPTIMIZE_CHAR
 
 // write ch to display X,Y coordinates using ASCII 5x7 font
-void St7735::putCh(char ch, int x, int y) {
+void Ssd1306::putCh(char ch, int x, int y) {
 #ifdef OPTIMIZE_CHAR
     uint8_t charBits[5];
     *((uint32_t *)(charBits)) = pgm_read_dword(FONT_CHARS[ch - 32]);
     charBits[4] = pgm_read_byte(FONT_CHARS[ch - 32] + 4);
 #endif
     uint8_t row, col, data, mask;
-    sendSetAddrWindow(x, y, x + ST7735_CHAR_X_PIXELS - 1, y + ST7735_CHAR_Y_PIXELS - 1);
-    sendCmd(RAMWR);
-    for (row = 0, mask = 0x01; row < ST7735_CHAR_Y_PIXELS; row++, mask <<= 1) {
-        for (col = 0; col < ST7735_CHAR_X_PIXELS; col++) {
+    sendSetAddrWindow(x, y, x + SSD1306_CHAR_X_PIXELS - 1, y + SSD1306_CHAR_Y_PIXELS - 1);
+    for (row = 0, mask = 0x01; row < SSD1306_CHAR_Y_PIXELS; row++, mask <<= 1) {
+        for (col = 0; col < SSD1306_CHAR_X_PIXELS; col++) {
 #ifdef OPTIMIZE_CHAR
             data = *(charBits + col);
             sendColor((data & mask) ? foreground : background);
@@ -677,43 +597,43 @@ void St7735::putCh(char ch, int x, int y) {
 }
 
 // writes character to display at current cursor position.
-void St7735::write(char ch) {
+void Ssd1306::write(char ch) {
     if (col >= 0 && col <= maxCols && row >= 0 && row <= maxRows) {
-        putCh(ch, col * ST7735_CHAR_WIDTH + colOffset, row * ST7735_CHAR_HEIGHT + rowOffset);
+        putCh(ch, col * SSD1306_CHAR_WIDTH + colOffset, row * SSD1306_CHAR_HEIGHT + rowOffset);
     }
     advanceCursor();
 }
 
-void St7735::write(char ch, int count) {
+void Ssd1306::write(char ch, int count) {
     while (count-- > 0) {
         if (col >= 0 && col <= maxCols && row >= 0 && row <= maxRows) {
-            putCh(ch, col * ST7735_CHAR_WIDTH + colOffset, row * ST7735_CHAR_HEIGHT + rowOffset);
+            putCh(ch, col * SSD1306_CHAR_WIDTH + colOffset, row * SSD1306_CHAR_HEIGHT + rowOffset);
         }
         advanceCursor();
     }
 }
 
 // writes string to display at current cursor position.
-void St7735::write(const char *text) {
+void Ssd1306::write(const char *text) {
     for (; *text; text++) // for all non-nul chars
         write(*text); // write the char
 }
 
 // writes integer i at current cursor position
-void St7735::write(int i) {
+void Ssd1306::write(int i) {
     char str[8]; // buffer for string result
     itoa(i, str, 10); // convert to string, base 10
     write(str);
 }
 
-void St7735::writeDigit(int dig) {
+void Ssd1306::writeDigit(int dig) {
     dig &= 0x0f;
     char c = (char)(dig > 9 ? 'A' - 10 + dig : '0' + dig);
     write(c);
 }
 
 // writes hexadecimal value of integer i at current cursor position
-void St7735::writeHex(int i) {
+void Ssd1306::writeHex(int i) {
     // char str[8]; // buffer for string result
     // itoa(i, str, 16); // convert to base 16 (hex)
     // WriteString(str, color);
@@ -724,19 +644,19 @@ void St7735::writeHex(int i) {
     writeDigit(i);
 }
 
-void St7735::writeHex(long i) {
+void Ssd1306::writeHex(long i) {
     writeHex((int)(i >> 16));
     write('.');
     writeHex((int)i);
 }
 
-void St7735::write(long i) {
+void Ssd1306::write(long i) {
     char buff[11];
     ltoa(i, buff, 10);
     write(buff);
 }
 
-void St7735::write(unsigned long i) {
+void Ssd1306::write(unsigned long i) {
     char buff[11];
     ltoa(i, buff, 10);
     write(buff);
