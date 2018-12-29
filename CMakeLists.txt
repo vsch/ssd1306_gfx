@@ -9,13 +9,13 @@ set(ARDUINO_CPU 8MHzatmega328)
 project(${PROJECT_NAME})
 
 # Define the source code for cpp files or default arduino sketch files
-set(${PROJECT_NAME}_SRCS ssd1306.cpp ssd1306_test.cpp)
+set(${PROJECT_NAME}_SRCS ssd1306.cpp)
 set(${PROJECT_NAME}_HDRS ssd1306.h)
 ### Additional static libraries to include in the target.
 #set(${CMAKE_PROJECT_NAME}_LIBS/..)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 
-#set(${CMAKE_PROJECT_NAME}_SKETCH )
+set(${CMAKE_PROJECT_NAME}_SKETCH ssd1306_test.ino)
 
 #### Additional settings for programmer. From programmers.txt
 set(${CMAKE_PROJECT_NAME}_PROGRAMMER avrispmkii)

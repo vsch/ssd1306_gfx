@@ -55,12 +55,28 @@ void PixelTest(uint8_t alpha) {
 }
 
 // sweeps Line routine through all four quadrants.
-void LineTest() {
+void LineTest3() {
     int x, y, x0 = tft.maxX / 2, y0 = tft.maxY / 2;
-    for (x = 0; x < tft.maxX - 1; x += 2) tft.line(x0, y0, x, 0, WHITE);
-    for (y = 0; y < tft.maxY - 1; y += 2) tft.line(x0, y0, tft.maxX - 1, y, WHITE);
-    for (x = tft.maxX - 1; x > 0; x -= 2) tft.line(x0, y0, x, tft.maxY - 1, WHITE);
-    for (y = tft.maxY - 1; y > 0; y -= 2) tft.line(x0, y0, 0, y, WHITE);
+    for (x = 0; x < tft.maxX - 1; x += 2) tft.line(x0, y0, x, 0, tft.foreground);
+    for (y = 0; y < tft.maxY - 1; y += 2) tft.line(x0, y0, tft.maxX - 1, y, tft.foreground);
+    for (x = tft.maxX - 1; x > 0; x -= 2) tft.line(x0, y0, x, tft.maxY - 1, tft.foreground);
+    for (y = tft.maxY - 1; y > 0; y -= 2) tft.line(x0, y0, 0, y, tft.foreground);
+}
+
+void LineTest1() {
+    int x, y, x0 = tft.maxX / 2, y0 = tft.maxY / 2;
+//    for (x = 0; x < tft.maxX - 1; x += 2) tft.line(x0, y0, x, 0, tft.foreground);
+    for (y = 0; y < tft.maxY - 1; y += 2) tft.line(x0, y0, tft.maxX - 1, y, tft.foreground);
+//    for (x = tft.maxX - 1; x > 0; x -= 2) tft.line(x0, y0, x, tft.maxY - 1, tft.foreground);
+    for (y = tft.maxY - 1; y > 0; y -= 2) tft.line(x0, y0, 0, y, tft.foreground);
+}
+
+void LineTest2() {
+    int x, y, x0 = tft.maxX / 2, y0 = tft.maxY / 2;
+    for (x = 0; x < tft.maxX - 1; x += 2) tft.line(x0, y0, x, 0, tft.foreground);
+//    for (y = 0; y < tft.maxY - 1; y += 2) tft.line(x0, y0, tft.maxX - 1, y, tft.foreground);
+    for (x = tft.maxX - 1; x > 0; x -= 2) tft.line(x0, y0, x, tft.maxY - 1, tft.foreground);
+//    for (y = tft.maxY - 1; y > 0; y -= 2) tft.line(x0, y0, 0, y, tft.foreground);
 }
 
 // draw series of concentric circles
@@ -95,35 +111,18 @@ void FillChars() {
     Serial.println(tft.maxRows);
 
     int chars = tft.maxCols * tft.maxRows;
-    int xMargin = (tft.maxX - tft.maxCols * SSD1306_CHAR_WIDTH) / 2;
-    int yMargin = (tft.maxY - tft.maxRows * SSD1306_CHAR_HEIGHT) / 2;
+    int xMargin = (tft.maxX - tft.maxCols * CHAR_WIDTH) / 2;
+    int yMargin = (tft.maxY - tft.maxRows * CHAR_HEIGHT) / 2;
 
     for (int i = 0; i < chars; i++) {
         int x = i % tft.maxCols;
         int y = i / tft.maxCols;
         char ascii = static_cast<char>((i % 96) + 32);
-        tft.putCh(ascii, x * SSD1306_CHAR_WIDTH + xMargin, y * SSD1306_CHAR_HEIGHT + yMargin);
+        tft.putCh(ascii, x * CHAR_WIDTH + xMargin, y * CHAR_HEIGHT + yMargin);
     }
 }
 
 #define SHOW_TIMING
-
-#ifdef SHOW_TIMING
-uint32_t timer = 0;
-
-uint32_t time() {
-    cli();
-    uint32_t val = timer;
-    sei();
-    return val;
-}
-
-ISR(TIMER0_COMPA_vect) {//timer0 interrupt 2kHz toggles pin 8
-//generates pulse wave of frequency 2kHz/2 = 1kHz (takes two cycles for full wave- toggle high then toggle low)
-    timer++;
-}
-
-#endif
 
 /*
   SerialEvent occurs whenever a new data comes in the hardware serial RX. This
@@ -148,26 +147,7 @@ void SetupPorts() {
 }
 
 // --------------------------------------------------------------------------- // MAIN PROGRAM
-int main() {
-#ifdef SHOW_TIMING
-    cli();
-
-    //set timer0 interrupt at 1kHz at 8MHz or 2kHz at 16MHz
-    TCCR0A = 0;// set entire TCCR0A register to 0
-    TCCR0B = 0;// same for TCCR0B
-    TCNT0 = 0;//initialize counter value to 0
-
-    // set compare match register for 1khz increments
-    OCR0A = 62;// = (16*10^6) / (2000*64) - 1 (must be <256)
-    // turn on CTC mode
-    TCCR0A |= (1 << WGM01);
-    // Set CS01 and CS00 bits for 64 prescaler
-    TCCR0B |= (1 << CS01) | (1 << CS00);
-    // enable timer compare interrupt
-    TIMSK0 |= (1 << OCIE0A);
-
-    sei();
-#endif
+void setup() {
     Serial.begin(57600);
 
     SetupPorts();                               // use PortB for LCD interface
@@ -178,35 +158,97 @@ int main() {
     Serial.println("Started spi");
     tft.initDisplay(SSD1306_ROT_0);                              // initialize TFT controller
     Serial.println("Initialized display");
+}
+
+void loop() {
     long id, id2, id3;
 
 //*
-    tft.clearScreen();
-    for (int rot = SSD1306_ROT_0; rot < (SSD1306_ROT_0 + 1); rot++) {
-        tft.clearScreen();
-        tft.setOrientation(static_cast<uint8_t>(rot % (SSD1306_ROT_270 + 1)));
-        tft.foreground = WHITE;
-
-        tft.startUpdate();
-        while (tft.nextPage()) {
-            FillChars();                            // show full screen of ASCII chars
+    for (int c = 0; c < 2; c++) {
+        if (c == 0) {
+            tft.foreground = WHITE; tft.background = BLACK;
+        } else {
+            tft.foreground = BLACK; tft.background = WHITE;
         }
-        msDelay(interTestDelay);
+
+        for (int rot = SSD1306_ROT_0; rot < (SSD1306_ROT_270 + 1); rot++) {
+            tft.clearScreen();
+            tft.setOrientation(static_cast<uint8_t>(rot % (SSD1306_ROT_270 + 1)));
+
+            tft.startUpdate();
+            while (tft.nextPage()) {
+                FillChars();                            // show full screen of ASCII chars
+            }
+            msDelay(interTestDelay);
+        }
     }
 
-    for (int rot = SSD1306_ROT_0; rot <= SSD1306_ROT_0; rot++) {
+    for (int c = 0; c < 2; c++) {
+        if (c == 0) {
+            tft.foreground = WHITE; tft.background = BLACK;
+        } else {
+            tft.foreground = BLACK; tft.background = WHITE;
+        }
+
+        for (int rot = SSD1306_ROT_0; rot < (SSD1306_ROT_270 + 1); rot++) {
+            tft.clearScreen();
+            tft.setOrientation(static_cast<uint8_t>(rot % (SSD1306_ROT_270 + 1)));
+
+            tft.startUpdate();
+            while (tft.nextPage()) {
+                int x, y, x0 = tft.maxX / 2, y0 = tft.maxY / 2;
+                tft.fillRect(0, 0, x0-1, y0-1, tft.foreground);
+                tft.fillRect(x0, y0, tft.maxX - 1, tft.maxY - 1, tft.foreground);
+            }
+            msDelay(interTestDelay);
+        }
+    }
+
+    for (int c = 0; c < 2; c++) {
+        if (c == 0) {
+            tft.foreground = WHITE; tft.background = BLACK;
+        } else {
+            tft.foreground = BLACK; tft.background = WHITE;
+        }
+
+        for (int rot = SSD1306_ROT_0; rot < (SSD1306_ROT_270 + 1); rot++) {
+            tft.clearScreen();
+            tft.setOrientation(static_cast<uint8_t>(rot % (SSD1306_ROT_270 + 1)));
+
+            tft.startUpdate();
+            while (tft.nextPage()) {
+                LineTest1();
+            }
+            msDelay(interTestDelay);
+        }
+    }
+
+    for (int c = 0; c < 2; c++) {
+        if (c == 0) {
+            tft.foreground = WHITE; tft.background = BLACK;
+        } else {
+            tft.foreground = BLACK; tft.background = WHITE;
+        }
+
+        for (int rot = SSD1306_ROT_0; rot < (SSD1306_ROT_270 + 1); rot++) {
+            tft.clearScreen();
+            tft.setOrientation(static_cast<uint8_t>(rot % (SSD1306_ROT_270 + 1)));
+
+            tft.startUpdate();
+            while (tft.nextPage()) {
+                LineTest2();
+            }
+            msDelay(interTestDelay);
+        }
+    }
+
+/*
+    for (int rot = SSD1306_ROT_0; rot < SSD1306_ROT_270 + 1; rot++) {
         tft.setOrientation(static_cast<uint8_t>(rot));
 
         tft.clearScreen();
         tft.foreground = WHITE;
 
-        tft.startUpdate();
-        while (tft.nextPage()) {
-            LineTest();
-        }
-        msDelay(interTestDelay);
-
-        tft.clearScreen();
         tft.startUpdate();
         while (tft.nextPage()) {
             ColorCircleTest();
@@ -218,8 +260,8 @@ int main() {
 
         tft.startUpdate();
         while (tft.nextPage()) {
-            tft.fillEllipse(tft.maxX/2, tft.maxY/2, 100, 50, BLACK);   // erase an oval in center
-            tft.ellipse(tft.maxX/2, tft.maxY/2, 100, 50, WHITE);        // outline the oval in green
+            tft.fillEllipse(tft.maxX / 2, tft.maxY / 2, 100, 50, BLACK);   // erase an oval in center
+            tft.ellipse(tft.maxX / 2, tft.maxY / 2, 100, 50, WHITE);        // outline the oval in green
 
             const char *str = "Hello, World!";            // text to display
             tft.gotoCharXY(4, 3);                         // position text cursor
@@ -235,8 +277,8 @@ int main() {
 
         tft.startUpdate();
         while (tft.nextPage()) {
-            tft.fillEllipse(tft.maxX/2, tft.maxY/2, 100, 50, BLACK);   // erase an oval in center
-            tft.ellipse(tft.maxX/2, tft.maxY/2, 100, 50, WHITE);        // outline the oval in green
+            tft.fillEllipse(tft.maxX / 2, tft.maxY / 2, 100, 50, BLACK);   // erase an oval in center
+            tft.ellipse(tft.maxX / 2, tft.maxY / 2, 100, 50, WHITE);        // outline the oval in green
 
             tft.gotoCharXY(6, 3);                                 // position text cursor
             tft.charOffset(3, 5);
@@ -248,10 +290,11 @@ int main() {
         }
         msDelay(interTestDelay);
     }
+*/
 
+    tft.setOrientation(SSD1306_ROT_0);
     tft.foreground = WHITE;
     tft.background = BLACK;
-    tft.setOrientation(SSD1306_ROT_0);
 
     int totalLines = 2;
     int totalColumns = 15;
@@ -267,9 +310,9 @@ int main() {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
 #ifdef SHOW_TIMING
-    uint32_t end = time();
-    uint32_t prevStart = end;
-    uint32_t start = end;
+    unsigned long end = micros();
+    unsigned long prevStart = end;
+    unsigned long start = end;
 #endif
     for (uint8_t iter = 0;; iter++) {
 #ifdef SHOW_TIMING
@@ -293,20 +336,17 @@ int main() {
 #ifdef SHOW_TIMING
             tft.gotoCharXY(col, line++);                                 // position text cursor
             tft.write(" TIME ");
-            tft.write((int) (end - start));
+            tft.write(end - start);
 #endif
 
             tft.gotoCharXY(col, line++);                                 // position text cursor
             tft.write("---------------");
         }
 
-        end = time();
+        end = micros();
 
 //        msDelay(1000);
     }
 #pragma clang diagnostic pop
 //*/
-
-    tft.closeSPI();                                 // close communication with TFT
-    FlashLED(3);                                // indicate program end
 }

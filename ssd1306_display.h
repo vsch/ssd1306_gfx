@@ -20,4 +20,7 @@
 #error "Unsupported Display Type "
 #endif
 
+#define CHAR_WIDTH SSD1306_CHAR_WIDTH
+#define CHAR_HEIGHT SSD1306_CHAR_HEIGHT
+
 #endif //_SSD1306_COLORS_H

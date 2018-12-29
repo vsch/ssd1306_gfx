@@ -157,6 +157,7 @@ void Ssd1306::closeSPI() {
 
 Ssd1306::Ssd1306(uint8_t *pageBuffer, uint8_t typeFlags) {
     buffer = pageBuffer;
+    rotation = SSD1306_ROT_0;
     pageStart = 0;
     flags = typeFlags;
 
@@ -202,30 +203,27 @@ void Ssd1306::clearInverted() {
 
 // Set the display orientation to 0,90,180,or 270 degrees
 void Ssd1306::setOrientation(uint8_t rot, uint8_t xSize, uint8_t ySize, uint8_t xOffset, uint8_t yOffset) {
-    int8_t invX;
-    int8_t invY;
     switch (rot) {
-//        case SSD1306_ROT_90:
-//        case SSD1306_ROT_270:
-//            invX = rot == SSD1306_ROT_270;
-//            invY = true;
-//            maxX = ySize;
-//            maxY = xSize;
-//            break;
-//
-//        case SSD1306_ROT_180:
-        case SSD1306_ROT_0:
+        case SSD1306_ROT_90:
+        case SSD1306_ROT_270:
+            rotation = rot;
+            maxX = ySize;
+            maxY = xSize;
+            break;
+
         default:
-            invX = rot == SSD1306_ROT_180;
-            invY = false;
+            rot = SSD1306_ROT_0;
+
+        case SSD1306_ROT_180:
+        case SSD1306_ROT_0:
+            rotation = rot;
             maxX = xSize;
             maxY = ySize;
             break;
     }
 
-    sendCmd(invX ? SSD1306_SEGREMAP_NORMAL : SSD1306_SEGREMAP_REVERSED);
-    sendCmd(invY ? SSD1306_COMSCANINC : SSD1306_COMSCANDEC);
-
+    sizeX = xSize;  // non-rotated size
+    sizeY = ySize;
     charOffset(0, 0);
 }
 
@@ -449,20 +447,20 @@ void Ssd1306::sendSetAddrWindow(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1) 
 
 void Ssd1306::clearScreen() {
 //    Serial.print("clearScreen ");
-    sendSetAddrWindow(0, 0, maxX - 1, maxY - 1); // set window to entire display
-    uint16_t count = static_cast<uint16_t>(maxX * maxY / 8);
-    sendBytes((uint8_t) 0, count);
+    sendSetAddrWindow(0, 0, sizeX - 1, sizeY - 1); // set window to entire display
+    uint16_t count = static_cast<uint16_t>(sizeX * sizeY / 8);
+    sendBytes((uint8_t) (background ? 0xff : 0), count);
 }
 
 void Ssd1306::startPage(uint8_t page) {
     pageStart = static_cast<uint8_t>((page & 7) << 3);
-    memset(buffer, 0, maxX);
+    memset(buffer, 0, sizeX);
 }
 
 void Ssd1306::updatePage() {
 //    Serial.print("updatePage ");
-    sendSetAddrWindow(0, pageStart, maxX - 1, pageStart + 7);
-    sendBytes(buffer, maxX);
+    sendSetAddrWindow(0, pageStart, sizeX - 1, pageStart + 7);
+    sendBytes(buffer, sizeX);
 }
 
 void Ssd1306::startUpdate() {
@@ -476,19 +474,18 @@ bool Ssd1306::nextPage() {
 //    Serial.print(" -> ");
 //    Serial.println(nextStart);
 
-    if (pageStart < maxY) {
+    if (pageStart < sizeY) {
         updatePage();
     }
 
     pageStart += 8;
 
-    if (pageStart < maxY) {
-        memset(buffer, 0, maxX);
+    if (pageStart < sizeY) {
+        memset(buffer, background ? 0xff : 0, sizeX);
         return true;
     }
     return false;
 }
-
 
 bool Ssd1306::isBGR() {
     return false;
@@ -510,7 +507,9 @@ color_t Ssd1306::rgb(uint8_t r, uint8_t g, uint8_t b) {
 // if alpha >= 240 then it is treated as fully opaque
 // else the current pixel color is blended with given color using proportional component blending
 void Ssd1306::setPixel(int x, int y, color_t color) {
-    if (x >= 0 && x < maxX && y >= pageStart && y < pageStart + 8) {
+    actualCoords(x, y);
+
+    if (x >= 0 && x < sizeX && y >= pageStart && y < pageStart + 8) {
         uint8_t mask = static_cast<uint8_t>(1 << (y - pageStart));
 
         if (color) {
@@ -521,8 +520,136 @@ void Ssd1306::setPixel(int x, int y, color_t color) {
     }
 }
 
+void Ssd1306::actualCoords(int &x, int &y) {
+    int aX, aY;
+
+    switch (rotation) {
+        default:
+        case SSD1306_ROT_0:
+            return;
+
+        case SSD1306_ROT_90:
+            aX = maxY - 1 - y;
+            aY = x;
+            break;
+
+        case SSD1306_ROT_270:
+            aX = y;
+            aY = maxX - 1 - x;
+            break;
+
+        case SSD1306_ROT_180:
+            aX = maxX - 1 - x;
+            aY = maxY - 1 - y;
+            break;
+    }
+
+    x = aX;
+    y = aY;
+}
+
+bool Ssd1306::isInPage(int x0, int x1, int y0, int y1) {
+    if (x0 > x1) {
+        int t = x0;
+        x0 = x1;
+        x1 = t;
+    }
+
+    if (y0 > y1) {
+        int t = y0;
+        y0 = y1;
+        y1 = t;
+    }
+
+    switch (rotation) {
+        default:
+        case SSD1306_ROT_0:
+            return y1 >= pageStart && y0 < pageStart + 8;
+        case SSD1306_ROT_180:
+            return maxY - 1 - y0 >= pageStart && maxY - 1 - y1 < pageStart + 8;
+        case SSD1306_ROT_90:
+            return x1 >= pageStart && x0 < pageStart + 8;
+        case SSD1306_ROT_270:
+            return maxX - 1 - x0 >= pageStart && maxX - 1 - x1 < pageStart + 8;
+    }
+}
+
+bool Ssd1306::isInPageTrimX(int &x0, int &x1, int y0, int y1) {
+    switch (rotation) {
+        case SSD1306_ROT_90:
+            if (!(x1 >= pageStart && x0 < pageStart + 8)) return false;
+            if (x1 < pageStart) x1 = pageStart;
+            if (x0 > pageStart + 7) x0 = pageStart + 7;
+            return true;
+
+        case SSD1306_ROT_270:
+            if (!(maxX - 1 - x0 >= pageStart && maxX - 1 - x1 < pageStart + 8)) return false;
+            if (maxX - 1 - x0 < pageStart) x0 = maxX - 1 - pageStart;
+            if (maxX - 1 - x1 > pageStart + 7) x1 = maxX - 1 - (pageStart + 7);
+            return true;
+
+        default:
+        case SSD1306_ROT_0:
+            return y1 >= pageStart && y0 < pageStart + 8;
+
+        case SSD1306_ROT_180:
+            return maxY - 1 - y0 >= pageStart && maxY - 1 - y1 < pageStart + 8;
+    }
+}
+
+bool Ssd1306::isInPageTrimY(int x0, int x1, int &y0, int &y1) {
+    switch (rotation) {
+        case SSD1306_ROT_90:
+            return x1 >= pageStart && x0 < pageStart + 8;
+        case SSD1306_ROT_270:
+            return maxX - 1 - x0 >= pageStart && maxX - 1 - x1 < pageStart + 8;
+
+        default:
+        case SSD1306_ROT_0:
+            if (!(y1 >= pageStart && y0 < pageStart + 8)) return false;
+            if (y1 < pageStart) y1 = pageStart;
+            if (y0 > pageStart + 7) y0 = pageStart + 7;
+            return true;
+
+        case SSD1306_ROT_180:
+            if (!(maxY - 1 - y0 >= pageStart && maxY - 1 - y1 < pageStart + 8)) return false;
+            if (maxY - 1 - y0 < pageStart) y0 = maxY - 1 - pageStart;
+            if (maxY - 1 - y1 > pageStart + 7) y1 = maxY - 1 - (pageStart + 7);
+            return true;
+    }
+}
+
+bool Ssd1306::isInPageTrimXY(int &x0, int &x1, int &y0, int &y1) {
+    switch (rotation) {
+        case SSD1306_ROT_90:
+            if (!(x1 >= pageStart && x0 < pageStart + 8)) return false;
+            if (x1 < pageStart) x1 = pageStart;
+            if (x0 > pageStart + 7) x0 = pageStart + 7;
+            return true;
+
+        case SSD1306_ROT_270:
+            if (!(maxX - 1 - x0 >= pageStart && maxX - 1 - x1 < pageStart + 8)) return false;
+            if (maxX - 1 - x0 < pageStart) x0 = maxX - 1 - pageStart;
+            if (maxX - 1 - x1 > pageStart + 7) x1 = maxX - 1 - (pageStart + 7);
+            return true;
+
+        default:
+        case SSD1306_ROT_0:
+            if (!(y1 >= pageStart && y0 < pageStart + 8)) return false;
+            if (y1 < pageStart) y1 = pageStart;
+            if (y0 > pageStart + 7) y0 = pageStart + 7;
+            return true;
+
+        case SSD1306_ROT_180:
+            if (!(maxY - 1 - y0 >= pageStart && maxY - 1 - y1 < pageStart + 8)) return false;
+            if (maxY - 1 - y0 < pageStart) y0 = maxY - 1 - pageStart;
+            if (maxY - 1 - y1 > pageStart + 7) y1 = maxY - 1 - (pageStart + 7);
+            return true;
+    }
+}
+
 void Ssd1306::hLine(int x0, int x1, int y, color_t color) {
-    if (y >= pageStart && y < pageStart + 8) {
+    if (isInPageTrimX(x0, x1, y, y)) {
         while (x0 <= x1) {
             setPixel(x0++, y, color);
         }
@@ -531,23 +658,22 @@ void Ssd1306::hLine(int x0, int x1, int y, color_t color) {
 
 // draws a vertical line in given color
 void Ssd1306::vLine(int x, int y0, int y1, color_t color) {
-    if (y0 < pageStart) y0 = pageStart;
-    if (y1 >= pageStart + 8) y1 = pageStart + 7;
-
-    while (y0 <= y1) {
-        setPixel(x, y0++, color);
+    if (isInPageTrimY(x, x, y0, y1)) {
+        while (y0 <= y1) {
+            setPixel(x, y0++, color);
+        }
     }
 }
 
 // an elegant implementation of the Bresenham algorithm, with alpha
 void Ssd1306::line(int x0, int y0, int x1, int y1, color_t color) {
-    int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-    int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+    if (isInPage(x0, x1, y0, y1)) {
+        int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+        int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
 
-    int xs = min(x0, x1);
-    int ys = min(y0, y1);
+        int xs = min(x0, x1);
+        int ys = min(y0, y1);
 
-    if (xs + dx >= 0 && xs < maxX && ys + dy >= pageStart && ys < pageStart + 8) {
         int err = (dx > dy ? dx : -dy) / 2, e2;
         for (;;) {
             setPixel(x0, y0, color);
@@ -577,11 +703,10 @@ void Ssd1306::fillRect(int x0, int y0, int x1, int y1, color_t color) {
 //    sendSetAddrWindow(x0, y0, x1, y1);
 //    uint16_t area = static_cast<uint16_t>((x1 - x0 + 1) * (y1 - y0 + 1));
 //    send565(color, area);
-    if (y0 < pageStart) y0 = pageStart;
-    if (y1 >= pageStart + 8) y1 = pageStart + 7;
-
-    while (y0 <= y1) {
-        hLine(x0, x1, y0++, color);
+    if (isInPageTrimXY(x0, x1, y0, y1)) {
+        while (y0 <= y1) {
+            hLine(x0, x1, y0++, color);
+        }
     }
 }
 
@@ -772,7 +897,7 @@ void Ssd1306::advanceCursor() {
 
 // write ch to display X,Y coordinates using ASCII 5x7 font
 void Ssd1306::putCh(char ch, int x, int y) {
-    if (x + SSD1306_CHAR_WIDTH > 0 && x < maxX && y + SSD1306_CHAR_HEIGHT > pageStart && y < pageStart + 8) {
+    if (isInPage(x, x + SSD1306_CHAR_WIDTH, y, y + SSD1306_CHAR_HEIGHT)) {
 #ifdef OPTIMIZE_CHAR
         uint8_t charBits[5];
         *((uint32_t *) (charBits)) = pgm_read_dword(FONT_CHARS[ch - 32]);

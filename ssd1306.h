@@ -208,6 +208,10 @@ public:
     color_t foreground;
     color_t background;
 
+    uint8_t rotation;
+    uint8_t sizeX;
+    uint8_t sizeY;
+
     uint8_t colOffset;      // char column pixel offset
     uint8_t rowOffset;      // char row pixel offset
     int16_t col;            // current column
@@ -228,6 +232,11 @@ public:
     // raw, no type conversions
     void initDisplay(uint8_t rot, uint8_t xSize, uint8_t ySize, uint8_t xOffset, uint8_t yOffset, int8_t inversion);
     void setOrientation(uint8_t rot, uint8_t xSize, uint8_t ySize, uint8_t xOffset, uint8_t yOffset);
+    void actualCoords(int &x, int &y);
+    bool isInPage(int x0, int x1, int y0, int y1);
+    bool isInPageTrimX(int &x0, int &x1, int y0, int y1);
+    bool isInPageTrimY(int x0, int x1, int &y0, int &y1);
+    bool isInPageTrimXY(int &x0, int &x1, int &y0, int &y1);
 
     void startPage(uint8_t page);
     void updatePage();
