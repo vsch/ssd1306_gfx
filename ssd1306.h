@@ -271,6 +271,8 @@ public:
 
     void hLine(int x0, int x1, int y, color_t color);
     void vLine(int x, int y0, int y1, color_t color);
+    void hLineRaw(int x0, int x1, int y, color_t color);
+    void vLineRaw(int x, int y0, int y1, color_t color);
     void line(int x0, int y0, int x1, int y1, color_t color);
     void rect(int x0, int y0, int x1, int y1, color_t color);
     void fillRect(int x0, int y0, int x1, int y1, color_t color);

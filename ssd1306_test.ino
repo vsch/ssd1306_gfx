@@ -166,9 +166,11 @@ void loop() {
 //*
     for (int c = 0; c < 2; c++) {
         if (c == 0) {
-            tft.foreground = WHITE; tft.background = BLACK;
+            tft.foreground = WHITE;
+            tft.background = BLACK;
         } else {
-            tft.foreground = BLACK; tft.background = WHITE;
+            tft.foreground = BLACK;
+            tft.background = WHITE;
         }
 
         for (int rot = SSD1306_ROT_0; rot < (SSD1306_ROT_270 + 1); rot++) {
@@ -185,9 +187,11 @@ void loop() {
 
     for (int c = 0; c < 2; c++) {
         if (c == 0) {
-            tft.foreground = WHITE; tft.background = BLACK;
+            tft.foreground = WHITE;
+            tft.background = BLACK;
         } else {
-            tft.foreground = BLACK; tft.background = WHITE;
+            tft.foreground = BLACK;
+            tft.background = WHITE;
         }
 
         for (int rot = SSD1306_ROT_0; rot < (SSD1306_ROT_270 + 1); rot++) {
@@ -197,7 +201,7 @@ void loop() {
             tft.startUpdate();
             while (tft.nextPage()) {
                 int x, y, x0 = tft.maxX / 2, y0 = tft.maxY / 2;
-                tft.fillRect(0, 0, x0-1, y0-1, tft.foreground);
+                tft.fillRect(0, 0, x0 - 1, y0 - 1, tft.foreground);
                 tft.fillRect(x0, y0, tft.maxX - 1, tft.maxY - 1, tft.foreground);
             }
             msDelay(interTestDelay);
@@ -206,9 +210,11 @@ void loop() {
 
     for (int c = 0; c < 2; c++) {
         if (c == 0) {
-            tft.foreground = WHITE; tft.background = BLACK;
+            tft.foreground = WHITE;
+            tft.background = BLACK;
         } else {
-            tft.foreground = BLACK; tft.background = WHITE;
+            tft.foreground = BLACK;
+            tft.background = WHITE;
         }
 
         for (int rot = SSD1306_ROT_0; rot < (SSD1306_ROT_270 + 1); rot++) {
@@ -225,9 +231,11 @@ void loop() {
 
     for (int c = 0; c < 2; c++) {
         if (c == 0) {
-            tft.foreground = WHITE; tft.background = BLACK;
+            tft.foreground = WHITE;
+            tft.background = BLACK;
         } else {
-            tft.foreground = BLACK; tft.background = WHITE;
+            tft.foreground = BLACK;
+            tft.background = WHITE;
         }
 
         for (int rot = SSD1306_ROT_0; rot < (SSD1306_ROT_270 + 1); rot++) {
@@ -242,55 +250,65 @@ void loop() {
         }
     }
 
-/*
-    for (int rot = SSD1306_ROT_0; rot < SSD1306_ROT_270 + 1; rot++) {
-        tft.setOrientation(static_cast<uint8_t>(rot));
-
-        tft.clearScreen();
-        tft.foreground = WHITE;
-
-        tft.startUpdate();
-        while (tft.nextPage()) {
-            ColorCircleTest();
-        }
-        msDelay(interTestDelay / 4);
-
-        tft.foreground = WHITE;
-        tft.background = BLACK;
-
-        tft.startUpdate();
-        while (tft.nextPage()) {
-            tft.fillEllipse(tft.maxX / 2, tft.maxY / 2, 100, 50, BLACK);   // erase an oval in center
-            tft.ellipse(tft.maxX / 2, tft.maxY / 2, 100, 50, WHITE);        // outline the oval in green
-
-            const char *str = "Hello, World!";            // text to display
-            tft.gotoCharXY(4, 3);                         // position text cursor
-            tft.charOffset(3, 5);
+//*
+    for (int c = 0; c < 2; c++) {
+        if (c == 0) {
             tft.foreground = WHITE;
             tft.background = BLACK;
-            tft.write(str);                       // display text inside oval
+        } else {
+            tft.foreground = BLACK;
+            tft.background = WHITE;
         }
 
-        msDelay(interTestDelay);
+        for (int rot = SSD1306_ROT_0; rot < SSD1306_ROT_270 + 1; rot++) {
+            tft.setOrientation(static_cast<uint8_t>(rot));
 
-        id = 0xF0E1D2C3; //ReadID();
+            tft.clearScreen();
+            tft.foreground = WHITE;
 
-        tft.startUpdate();
-        while (tft.nextPage()) {
-            tft.fillEllipse(tft.maxX / 2, tft.maxY / 2, 100, 50, BLACK);   // erase an oval in center
-            tft.ellipse(tft.maxX / 2, tft.maxY / 2, 100, 50, WHITE);        // outline the oval in green
+            tft.startUpdate();
+            while (tft.nextPage()) {
+                ColorCircleTest();
+            }
+            msDelay(interTestDelay / 4);
 
-            tft.gotoCharXY(6, 3);                                 // position text cursor
-            tft.charOffset(3, 5);
             tft.foreground = WHITE;
             tft.background = BLACK;
-            tft.writeHex((int) (id >> 16));
-            tft.write(' ');
-            tft.writeHex((int) id);
+
+            tft.startUpdate();
+            while (tft.nextPage()) {
+                tft.fillEllipse(tft.maxX / 2, tft.maxY / 2, 100, 50, BLACK);   // erase an oval in center
+                tft.ellipse(tft.maxX / 2, tft.maxY / 2, 100, 50, WHITE);        // outline the oval in green
+
+                const char *str = "Hello, World!";            // text to display
+                tft.gotoCharXY(4, 3);                         // position text cursor
+                tft.charOffset(3, 5);
+                tft.foreground = WHITE;
+                tft.background = BLACK;
+                tft.write(str);                       // display text inside oval
+            }
+
+            msDelay(interTestDelay);
+
+            id = 0xF0E1D2C3; //ReadID();
+
+            tft.startUpdate();
+            while (tft.nextPage()) {
+                tft.fillEllipse(tft.maxX / 2, tft.maxY / 2, 100, 50, BLACK);   // erase an oval in center
+                tft.ellipse(tft.maxX / 2, tft.maxY / 2, 100, 50, WHITE);        // outline the oval in green
+
+                tft.gotoCharXY(6, 3);                                 // position text cursor
+                tft.charOffset(3, 5);
+                tft.foreground = WHITE;
+                tft.background = BLACK;
+                tft.writeHex((int) (id >> 16));
+                tft.write(' ');
+                tft.writeHex((int) id);
+            }
+            msDelay(interTestDelay);
         }
-        msDelay(interTestDelay);
     }
-*/
+//*/
 
     tft.setOrientation(SSD1306_ROT_0);
     tft.foreground = WHITE;

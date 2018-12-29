@@ -203,24 +203,38 @@ void Ssd1306::clearInverted() {
 
 // Set the display orientation to 0,90,180,or 270 degrees
 void Ssd1306::setOrientation(uint8_t rot, uint8_t xSize, uint8_t ySize, uint8_t xOffset, uint8_t yOffset) {
+    uint8_t colCmd = SSD1306_SEGREMAP_REVERSED;
+    uint8_t rowCmd = SSD1306_COMSCANDEC;
+
+    if (rot > SSD1306_ROT_270) rot = SSD1306_ROT_0;
+
     switch (rot) {
         case SSD1306_ROT_90:
-        case SSD1306_ROT_270:
-            rotation = rot;
+            colCmd = SSD1306_SEGREMAP_NORMAL;
             maxX = ySize;
             maxY = xSize;
             break;
 
-        default:
-            rot = SSD1306_ROT_0;
+        case SSD1306_ROT_270:
+            rowCmd = SSD1306_COMSCANINC;
+            maxX = ySize;
+            maxY = xSize;
+            break;
 
         case SSD1306_ROT_180:
+            colCmd = SSD1306_SEGREMAP_NORMAL;
+            rowCmd = SSD1306_COMSCANINC;
+
+        default:
         case SSD1306_ROT_0:
-            rotation = rot;
             maxX = xSize;
             maxY = ySize;
             break;
     }
+
+    rotation = rot;
+    sendCmd(rowCmd);
+    sendCmd(colCmd);
 
     sizeX = xSize;  // non-rotated size
     sizeY = ySize;
@@ -521,31 +535,21 @@ void Ssd1306::setPixel(int x, int y, color_t color) {
 }
 
 void Ssd1306::actualCoords(int &x, int &y) {
-    int aX, aY;
 
     switch (rotation) {
         default:
+        case SSD1306_ROT_180:
         case SSD1306_ROT_0:
-            return;
+            break;
 
         case SSD1306_ROT_90:
-            aX = maxY - 1 - y;
-            aY = x;
-            break;
-
         case SSD1306_ROT_270:
-            aX = y;
-            aY = maxX - 1 - x;
-            break;
-
-        case SSD1306_ROT_180:
-            aX = maxX - 1 - x;
-            aY = maxY - 1 - y;
+            int t = x;
+            x = y;
+            y = t;
             break;
     }
 
-    x = aX;
-    y = aY;
 }
 
 bool Ssd1306::isInPage(int x0, int x1, int y0, int y1) {
@@ -564,57 +568,43 @@ bool Ssd1306::isInPage(int x0, int x1, int y0, int y1) {
     switch (rotation) {
         default:
         case SSD1306_ROT_0:
-            return y1 >= pageStart && y0 < pageStart + 8;
         case SSD1306_ROT_180:
-            return maxY - 1 - y0 >= pageStart && maxY - 1 - y1 < pageStart + 8;
+            return y1 >= pageStart && y0 < pageStart + 8;
+
+        case SSD1306_ROT_270:
         case SSD1306_ROT_90:
             return x1 >= pageStart && x0 < pageStart + 8;
-        case SSD1306_ROT_270:
-            return maxX - 1 - x0 >= pageStart && maxX - 1 - x1 < pageStart + 8;
     }
 }
 
 bool Ssd1306::isInPageTrimX(int &x0, int &x1, int y0, int y1) {
     switch (rotation) {
         case SSD1306_ROT_90:
+        case SSD1306_ROT_270:
             if (!(x1 >= pageStart && x0 < pageStart + 8)) return false;
             if (x1 < pageStart) x1 = pageStart;
             if (x0 > pageStart + 7) x0 = pageStart + 7;
             return true;
 
-        case SSD1306_ROT_270:
-            if (!(maxX - 1 - x0 >= pageStart && maxX - 1 - x1 < pageStart + 8)) return false;
-            if (maxX - 1 - x0 < pageStart) x0 = maxX - 1 - pageStart;
-            if (maxX - 1 - x1 > pageStart + 7) x1 = maxX - 1 - (pageStart + 7);
-            return true;
-
         default:
         case SSD1306_ROT_0:
-            return y1 >= pageStart && y0 < pageStart + 8;
-
         case SSD1306_ROT_180:
-            return maxY - 1 - y0 >= pageStart && maxY - 1 - y1 < pageStart + 8;
+            return y1 >= pageStart && y0 < pageStart + 8;
     }
 }
 
 bool Ssd1306::isInPageTrimY(int x0, int x1, int &y0, int &y1) {
     switch (rotation) {
         case SSD1306_ROT_90:
-            return x1 >= pageStart && x0 < pageStart + 8;
         case SSD1306_ROT_270:
-            return maxX - 1 - x0 >= pageStart && maxX - 1 - x1 < pageStart + 8;
+            return x1 >= pageStart && x0 < pageStart + 8;
 
         default:
         case SSD1306_ROT_0:
+        case SSD1306_ROT_180:
             if (!(y1 >= pageStart && y0 < pageStart + 8)) return false;
             if (y1 < pageStart) y1 = pageStart;
             if (y0 > pageStart + 7) y0 = pageStart + 7;
-            return true;
-
-        case SSD1306_ROT_180:
-            if (!(maxY - 1 - y0 >= pageStart && maxY - 1 - y1 < pageStart + 8)) return false;
-            if (maxY - 1 - y0 < pageStart) y0 = maxY - 1 - pageStart;
-            if (maxY - 1 - y1 > pageStart + 7) y1 = maxY - 1 - (pageStart + 7);
             return true;
     }
 }
@@ -622,46 +612,44 @@ bool Ssd1306::isInPageTrimY(int x0, int x1, int &y0, int &y1) {
 bool Ssd1306::isInPageTrimXY(int &x0, int &x1, int &y0, int &y1) {
     switch (rotation) {
         case SSD1306_ROT_90:
+        case SSD1306_ROT_270:
             if (!(x1 >= pageStart && x0 < pageStart + 8)) return false;
             if (x1 < pageStart) x1 = pageStart;
             if (x0 > pageStart + 7) x0 = pageStart + 7;
             return true;
 
-        case SSD1306_ROT_270:
-            if (!(maxX - 1 - x0 >= pageStart && maxX - 1 - x1 < pageStart + 8)) return false;
-            if (maxX - 1 - x0 < pageStart) x0 = maxX - 1 - pageStart;
-            if (maxX - 1 - x1 > pageStart + 7) x1 = maxX - 1 - (pageStart + 7);
-            return true;
-
         default:
+        case SSD1306_ROT_180:
         case SSD1306_ROT_0:
             if (!(y1 >= pageStart && y0 < pageStart + 8)) return false;
             if (y1 < pageStart) y1 = pageStart;
             if (y0 > pageStart + 7) y0 = pageStart + 7;
-            return true;
-
-        case SSD1306_ROT_180:
-            if (!(maxY - 1 - y0 >= pageStart && maxY - 1 - y1 < pageStart + 8)) return false;
-            if (maxY - 1 - y0 < pageStart) y0 = maxY - 1 - pageStart;
-            if (maxY - 1 - y1 > pageStart + 7) y1 = maxY - 1 - (pageStart + 7);
             return true;
     }
 }
 
 void Ssd1306::hLine(int x0, int x1, int y, color_t color) {
     if (isInPageTrimX(x0, x1, y, y)) {
-        while (x0 <= x1) {
-            setPixel(x0++, y, color);
-        }
+        hLineRaw(x0, x1, y, color);
+    }
+}
+
+void Ssd1306::hLineRaw(int x0, int x1, int y, color_t color) {
+    while (x0 <= x1) {
+        setPixel(x0++, y, color);
     }
 }
 
 // draws a vertical line in given color
 void Ssd1306::vLine(int x, int y0, int y1, color_t color) {
     if (isInPageTrimY(x, x, y0, y1)) {
-        while (y0 <= y1) {
-            setPixel(x, y0++, color);
-        }
+        vLineRaw(x, y0, y1, color);
+    }
+}
+
+void Ssd1306::vLineRaw(int x, int y0, int y1, color_t color) {
+    while (y0 <= y1) {
+        setPixel(x, y0++, color);
     }
 }
 
@@ -693,19 +681,24 @@ void Ssd1306::line(int x0, int y0, int x1, int y1, color_t color) {
 
 // draws a rectangle in given color
 void Ssd1306::rect(int x0, int y0, int x1, int y1, color_t color) {
-    hLine(x0, x1, y0, color);
-    hLine(x0, x1, y1, color);
-    vLine(x0, y0, y1, color);
-    vLine(x1, y0, y1, color);
+    if (isInPageTrimXY(x0, x1, y0, y1)) {
+        hLineRaw(x0, x1, y0, color);
+        hLineRaw(x0, x1, y1, color);
+        vLineRaw(x0, y0, y1, color);
+        vLineRaw(x1, y0, y1, color);
+    }
 }
 
 void Ssd1306::fillRect(int x0, int y0, int x1, int y1, color_t color) {
-//    sendSetAddrWindow(x0, y0, x1, y1);
-//    uint16_t area = static_cast<uint16_t>((x1 - x0 + 1) * (y1 - y0 + 1));
-//    send565(color, area);
     if (isInPageTrimXY(x0, x1, y0, y1)) {
-        while (y0 <= y1) {
-            hLine(x0, x1, y0++, color);
+        if (rotation == SSD1306_ROT_0 || rotation == SSD1306_ROT_180) {
+            while (y0 <= y1) {
+                hLineRaw(x0, x1, y0++, color);
+            }
+        } else {
+            while (x0 <= x1) {
+                vLineRaw(x0++, y0, y1, color);
+            }
         }
     }
 }
@@ -836,13 +829,16 @@ void Ssd1306::fillEllipse(int cx, int cy, int width, int height, color_t color) 
     int dx = 0;
     long a2 = a * a, b2 = b * b;
     long a2b2 = (long) a2 * b2; // need longs: big numbers!
+
     hLine(cx - a, cx + a, cy, color); // draw center line
+
     while (y <= b) { // draw horizontal lines...
         for (x1 = x0 - (dx - 1); x1 > 0; x1--)
             if (b2 * x1 * x1 + a2 * y * y <= a2b2) break;
 
         dx = x0 - x1;
         x0 = x1;
+
         hLine(cx - x0, cx + x0, cy + y, color);
         hLine(cx - x0, cx + x0, cy - y, color);
         y += 1;
