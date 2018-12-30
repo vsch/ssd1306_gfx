@@ -109,8 +109,8 @@ public:
 
     uint8_t colOffset;      // char column pixel offset
     uint8_t rowOffset;      // char row pixel offset
-    int16_t col;            // current column
-    int16_t row;            // current row
+    int8_t charCol;         // current column
+    int8_t charRow;         // current row
     uint8_t maxCols;
     uint8_t maxRows;
 
@@ -180,6 +180,7 @@ public:
     void fillEllipse(int cx, int cy, int width, int height, color_t color);
 
     void charOffset(uint8_t x, uint8_t y);
+    void charCenterOffset();
     void gotoCharXY(int col, int row);
     void advanceCursor();
     void putCh(char ch, int x, int y);

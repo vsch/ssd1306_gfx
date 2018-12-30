@@ -315,13 +315,13 @@ void loop() {
     tft.background = BLACK;
 
     int totalLines = 2;
-    int totalColumns = 15;
+    int totalColumns = 14;
     int col0 = (tft.maxCols - totalColumns) / 2;
     int line0 = (tft.maxRows - totalLines) / 2;
 
     Serial.print("maxCols: ");
     Serial.print(tft.maxCols);
-    Serial.print("maxRows: ");
+    Serial.print(" maxRows: ");
     Serial.println(tft.maxRows);
 
 //*
@@ -358,7 +358,7 @@ void loop() {
 #endif
 
             tft.gotoCharXY(col, line++);                                 // position text cursor
-            tft.write("---------------");
+            tft.write("--------------");
         }
 
         end = micros();

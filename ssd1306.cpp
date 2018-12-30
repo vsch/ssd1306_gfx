@@ -328,7 +328,7 @@ void Ssd1306::setOrientation(uint8_t rot, uint8_t xSize, uint8_t ySize, uint8_t 
 
     sizeX = xSize;  // non-rotated size
     sizeY = ySize;
-    charOffset(0, 0);
+    charCenterOffset();
 }
 
 void
@@ -958,24 +958,28 @@ void Ssd1306::charOffset(uint8_t x, uint8_t y) {
     maxRows = static_cast<uint8_t>((maxY - y) / SSD1306_CHAR_HEIGHT);
 }
 
+void Ssd1306::charCenterOffset() {
+    charOffset(0, 0);
+    colOffset = static_cast<uint8_t>((maxX - maxCols * SSD1306_CHAR_WIDTH + 1) / 2);
+    rowOffset = static_cast<uint8_t>((maxY - maxRows * SSD1306_CHAR_HEIGHT + 1) / 2);
+}
+
 // position cursor on character x,y grid, where 0<x<20, 0<y<19.
 void Ssd1306::gotoCharXY(int col, int row) {
-    this->col = static_cast<int16_t>(col);
-    this->row = static_cast<int16_t>(row);
-    colOffset = 0;
-    rowOffset = 0;
+    this->charCol = static_cast<int8_t>(col);
+    this->charRow = static_cast<int8_t>(row);
 }
 
 // moves character cursor to next position, assuming portrait orientation
 void Ssd1306::advanceCursor() {
-    col++;             // advance x position
-    if (col > maxCols) {    // beyond right margin?
-        row++;         // go to next line
-        col = 0;       // at left margin
+    charCol++;             // advance x position
+    if (charCol >= maxCols) {    // beyond right margin?
+        charRow++;         // go to next line
+        charCol = 0;       // at left margin
     }
 
-    if (row > maxRows)      // beyond bottom margin?
-        row = 0;       // start at top again
+    if (charRow >= maxRows)      // beyond bottom margin?
+        charRow = 0;       // start at top again
 }
 
 // write ch to display X,Y coordinates using ASCII 5x7 font
@@ -1019,8 +1023,8 @@ void Ssd1306::putCh(char ch, int x, int y) {
 
 // writes character to display at current cursor position.
 void Ssd1306::write(char ch) {
-    if (col >= 0 && col <= maxCols && row >= 0 && row <= maxRows) {
-        putCh(ch, col * SSD1306_CHAR_WIDTH + colOffset, row * SSD1306_CHAR_HEIGHT + rowOffset);
+    if (charCol >= 0 && charCol < maxCols && charRow >= 0 && charRow < maxRows) {
+        putCh(ch, charCol * SSD1306_CHAR_WIDTH + colOffset, charRow * SSD1306_CHAR_HEIGHT + rowOffset);
     }
     advanceCursor();
 }
@@ -1028,8 +1032,8 @@ void Ssd1306::write(char ch) {
 // writes string to display at current cursor position.
 void Ssd1306::write(char ch, int count) {
     while (count-- > 0) {
-        if (col >= 0 && col <= maxCols && row >= 0 && row <= maxRows) {
-            putCh(ch, col * SSD1306_CHAR_WIDTH + colOffset, row * SSD1306_CHAR_HEIGHT + rowOffset);
+        if (charCol >= 0 && charCol < maxCols && charRow >= 0 && charRow < maxRows) {
+            putCh(ch, charCol * SSD1306_CHAR_WIDTH + colOffset, charRow * SSD1306_CHAR_HEIGHT + rowOffset);
         }
         advanceCursor();
     }
