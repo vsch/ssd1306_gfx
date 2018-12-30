@@ -1,18 +1,6 @@
 #ifndef _SSD1306_H_
 #define _SSD1306_H_
 
-#include "Arduino.h"
-#include <stdlib.h>
-
-#define RGB565(r, g, b) ((color_t)((((r) & 0xF8) << 8) | (((g) & 0xFC) << 3) | ((b) & 0xF8) >> 3))
-#define RGB666(r, g, b) ((int32_t)(static_cast<uint8_t>(r) << 16 | static_cast<uint8_t>(g) << 8 | static_cast<uint8_t>(b)))
-
-#define RGB565_TO_RGB888(c) (((int32_t)((c) & 0xF800) << 8) | (((int32_t)((c) & 0x07E0) << 5)) | (((int32_t)((c) & 0x001F) << 1)))
-
-#define RGB565_RED(c) (static_cast<uint8_t>((static_cast<uint16_t>(c) >> 8) & static_cast<uint8_t>(0xF8)))
-#define RGB565_GREEN(c) (static_cast<uint8_t>((static_cast<uint16_t>(c) >> 3) & static_cast<uint8_t>(0xFC)))
-#define RGB565_BLUE(c) (static_cast<uint8_t>((static_cast<uint16_t>(c) << 3) & static_cast<uint8_t>(0xF8)))
-
 #ifndef clearBit
 #define clearBit(x, y) (x &= ~_BV(y))     // equivalent to cbi(x,y)
 #endif clearBit
@@ -52,100 +40,6 @@
 #define SSD1306_SCK_BIT   5
 #define SSD1306_SCK       SSD1306_SCK_PORT,SSD1306_SCK_BIT
 
-// ---------------------------------------------------------------------------
-// SSD1306 ROUTINES
-#define SSD1306_SETCONTRAST    0x81        // set contrast (2 bytes)
-#define SSD1306_DISPLAYALLON   0xA5                   // entire display on
-#define SSD1306_DISPLAYALLON_RESUME    0xA4        // display ram buffer
-#define SSD1306_DISPLAYOFF     0xAE        // display off
-#define SSD1306_DISPLAYON      0xAF        // display on
-#define SSD1306_NORMALDISPLAY      0xA6        // inv off
-#define SSD1306_INVERTDISPLAY       0xA7        // inv on
-
-#define HSCR_RIGHT  0x26        // horizontal scroll right (7 bytes)
-#define HSCR_LEFT   0x27        // horizontal scroll left  (7 bytes)
-                                // [1] - 0
-                                // [2] - start page# 0..7
-                                // [3] - interval frames 0..7: 0 - 5f, 1 - 64f, 2 - 128f, 3 - 256f, 4 - 3f, 5 - 4f, 6 - 25f, 7 - 2f
-                                // [4] - end page # 0..7 >= start page
-                                // [5] - 0
-                                // [6] - 0xFF
-
-#define VSCR_RIGHT  0x29        // vertical & horizontal scroll right (7 bytes)
-#define VSCR_LEFT   0x2A        // vertical & horizontal scroll left  (7 bytes)
-                                // [1] - 0
-                                // [2] - start page# 0..7
-                                // [3] - interval frames 0..7: 0 - 5f, 1 - 64f, 2 - 128f, 3 - 256f, 4 - 3f, 5 - 4f, 6 - 25f, 7 - 2f
-                                // [4] - end page # 0..7 >= start page
-                                // [5] - vertical scrolling offset 0..63
-
-#define SSD1306_DEACTIVATE_SCROLL   0x2E        // deactivate scroll
-#define ACT_SCR     0x2E        // activate scroll
-
-#define VSCR_AREA   0xA3        // vertical scroll area (3 bytes)
-                                // [1] - no of rows fixed 0..63
-                                // [2] - no of rows scrolling 0..64
-
-#define SSD1306_MEMORYMODE   0x20  // set addressing mode (2 bytes)
-                                // [1] - 0 - horizontal, 1 - vertical, 2 - page addressing, 3 - invalid
-
-#define PAGE_COLS   0x21        // set col start/end for horiz/vertical addressing mode (3 bytes)
-                                // [1] - column start (0..127)
-                                // [1] - column end (0..127)
-
-#define PAGE_ADDR   0x22        // set page address (3 bytes)  (horizontal or vertical addressing mode)
-                                // [1] - page start
-                                // [2] - page end
-
-#define LOCOL_START 0x00        // set low column start nibble (or with low nibble 0..f) for page addressing
-#define HICOL_START 0x10        // set hi column start nibble (or with high nibble 0..f) for page addressing
-
-#define PAGE_START  0xB0        // set page start for page addressing mode (or with page # 0..7), B0 page 0, B1 page 1, B2 page, ... B7 page 7
-
-#define SSD1306_COMSCANINC     0xC0        // rows scanned normal
-#define SSD1306_COMSCANDEC     0xC8        // rows scanned reversed (vertical flip)
-
-#define SSD1306_SEGREMAP_NORMAL      0xA0        // columns scanned normal
-#define SSD1306_SEGREMAP_REVERSED    0xA1        // columns scanned reversed (horizontal flip)
-
-#define DISP_OFFS   0xD3        // vertical shift (2 bytes)
-                                // [1] - veritcal offset 0..63
-
-#define DISP_CLK_DIV 0xD5       // display clock divide, 2 bytes
-                                // [1] - bits[0..3]+1 is divide ratio, default (0), bits[4..7] osc frequency default(8)
-
-#define SET_MULTIPLEX_RATIO  0xA8         // set multiplex ratio 2 bytes
-                                // [1] - 15..63,+1 is ratio, 0..14 invalid
-
-#define SSD1306_SETDISPLAYOFFSET 0xD3  // display offset 2 bytes
-                                // [1] - 0..63 display offset, default 0
-
-#define SSD1306_SETSTARTLINE   0x40 // 1 byte, bits[0..5] display offset
-#define SSD1306_CHARGEPUMP     0x8D // charge pump 2 bytes
-                                    // [1] - 0x10 disable, 0x14 enable
-#define SSD1306_CHARGEPUMP_ENABLE     0x14
-#define SSD1306_CHARGEPUMP_DISABLE    0x10
-
-#define SSD1306_SETCOMPINS 0xDA    // set com pins hardware config 2 bytes
-//A[1]=1b,
-//A[4]=0b, Sequential COM pin configuration A[4]=1b(RESET), Alternative COM pin configuration
-//A[5]=0b(RESET), Disable COM Left/Right remap
-//A[5]=1b, Enable COM Left/Right remap
-
-#define SSD1306_SETPRECHARGE  0xD9 // set precharge 2 bytes
-//A[3:0] : Phase 1 period of up to 15 DCLK clocks 0 is invalid entry
-//(RESET=2h)
-//A[7:4] : Phase 2 period of up to 15 DCLK clocks 0 is invalid entry
-//(RESET=2h )
-
-#define SSD1306_SETVCOMDETECT 0xDB  // Vcomh deselect level (2bytes)
-//| A[6:4] | Hex Byte | V COMH deselect level |
-//|--------|-----|-----------------------|
-//| 000b   | 00h | ~ 0.65 x VCC          |
-//| 010b   | 40h | ~ 0.77 x VCC (RESET)  |
-//| 011b   | 60h | ~ 0.83 x VCC          |
-
-
 // TFT display constants, defaults
 #define SSD1306_XSIZE   128
 #define SSD1306_YSIZE   64
@@ -158,6 +52,7 @@
 #define SSD1306_CHAR_HEIGHT (SSD1306_CHAR_Y_PIXELS+1)
 
 #define _RGB(r, g, b) ((r) != 0 || (g) != 0 || (b) != 0)
+
 typedef int8_t color_t;
 typedef uint8_t alpha_t;
 
@@ -291,6 +186,7 @@ public:
     void write(char ch);
     void write(char ch, int count);
     void write(const char *text);
+    void write(const __FlashStringHelper *text);
     void write(long i);
     void write(unsigned long i);
     void writeHex(long i);
