@@ -1102,7 +1102,7 @@ uint8_t Ssd1306::write(const char *text, uint8_t count) {
 
 void Ssd1306::write(const char *buff, uint8_t pos, char c) {
     uint8_t len = strlen(buff);
-    if (len > pos) {
+    if (len >= pos) {
         write(buff, len - pos);
         write(c);
         write(buff + len - pos);
