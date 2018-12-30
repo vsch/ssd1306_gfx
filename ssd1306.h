@@ -195,6 +195,11 @@ public:
     void writeDigit(int dig);
     void write(int i);
 
+    uint8_t write(const char *text, uint8_t count);
+    void write(const char *buff, uint8_t pos, char c);
+    void write(unsigned long i, uint8_t pos, char c);
+    void write(long i, uint8_t pos, char c);
+
     void openSPI();
     void closeSPI();
 

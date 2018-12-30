@@ -1093,3 +1093,34 @@ void Ssd1306::write(unsigned long i) {
     write(buff);
 }
 
+// writes string to display at current cursor position.
+uint8_t Ssd1306::write(const char *text, uint8_t count) {
+    for (; *text && count; text++, count--) // for all non-nul chars
+        write(*text); // write the char
+    return count;
+}
+
+void Ssd1306::write(const char *buff, uint8_t pos, char c) {
+    uint8_t len = strlen(buff);
+    if (len > pos) {
+        write(buff, len - pos);
+        write(c);
+        write(buff + len - pos);
+    } else {
+        write(buff);
+    }
+}
+
+void Ssd1306::write(unsigned long i, uint8_t pos, char c) {
+    char buff[11];
+    ltoa(i, buff, 10);
+    write(buff, pos, c);
+}
+
+void Ssd1306::write(long i, uint8_t pos, char c) {
+    char buff[11];
+    ltoa(i, buff, 10);
+    write(buff, pos, c);
+}
+
+
