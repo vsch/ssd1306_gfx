@@ -15,7 +15,7 @@
 // ---------------------------------------------------------------------------
 // SSD1306 ROUTINES
 #define SSD1306_SETCONTRAST    0x81        // set contrast (2 bytes)
-#define SSD1306_DISPLAYALLON   0xA5                   // entire display on
+#define SSD1306_DISPLAYALLON   0xA5        // entire display on
 #define SSD1306_DISPLAYALLOFF  0xA4        // display ram buffer
 #define SSD1306_DISPLAYOFF     0xAE        // display off
 #define SSD1306_DISPLAYON      0xAF        // display on
@@ -69,7 +69,7 @@
 #define SSD1306_SEGREMAP_REVERSED    0xA1        // columns scanned reversed (horizontal flip)
 
 #define DISP_OFFS   0xD3        // vertical shift (2 bytes)
-// [1] - veritcal offset 0..63
+// [1] - vertical offset 0..63
 
 #define DISP_CLK_DIV 0xD5       // display clock divide, 2 bytes
 // [1] - bits[0..3]+1 is divide ratio, default (0), bits[4..7] osc frequency default(8)
