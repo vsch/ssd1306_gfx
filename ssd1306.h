@@ -1,6 +1,42 @@
 #ifndef _SSD1306_H_
 #define _SSD1306_H_
 
+// 128x64 display constants
+#define SSD1306_096_XSIZE   128
+#define SSD1306_096_YSIZE   64
+#define SSD1306_096_XOFFSET 0
+#define SSD1306_096_YOFFSET 0
+
+// 128x32 display constants
+#define SSD1306_091_XSIZE   128
+#define SSD1306_091_YSIZE   32
+#define SSD1306_091_XOFFSET 0
+#define SSD1306_091_YOFFSET 0
+
+#define SSD1306_CHAR_X_PIXELS 5
+#define SSD1306_CHAR_Y_PIXELS 7
+#define SSD1306_CHAR_WIDTH (SSD1306_CHAR_X_PIXELS+1)
+#define SSD1306_CHAR_HEIGHT (SSD1306_CHAR_Y_PIXELS+1)
+
+#ifndef SSD1306_OLED_TYPE
+#define SSD1306_OLED_TYPE 91
+#endif
+
+#if SSD1306_OLED_TYPE == 96
+#define DISPLAY_XSIZE   SSD1306_096_XSIZE
+#define DISPLAY_YSIZE   SSD1306_096_YSIZE
+#define DISPLAY_ADDRESS 0x3D ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+#elif SSD1306_OLED_TYPE == 91
+#define DISPLAY_XSIZE   SSD1306_091_XSIZE
+#define DISPLAY_YSIZE   SSD1306_091_YSIZE
+#define DISPLAY_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+#else
+#error "Unsupported Display Type "
+#endif
+
+#define CHAR_WIDTH SSD1306_CHAR_WIDTH
+#define CHAR_HEIGHT SSD1306_CHAR_HEIGHT
+
 #ifndef clearBit
 #define clearBit(x, y) (x &= ~_BV(y))     // equivalent to cbi(x,y)
 #endif clearBit
@@ -9,204 +45,137 @@
 #define setBit(x, y) (x |= _BV(y))        // equivalent to sbi(x,y)
 #endif setBit
 
-// DC 8
-#define SSD1306_DC_PORT  PORTD
-#define SSD1306_DC_BIT   5
-#define SSD1306_DC       SSD1306_DC_PORT,SSD1306_DC_BIT
-
-// DC 9
-#define SSD1306_RST_PORT PORTB
-#define SSD1306_RST_BIT  1
-#define SSD1306_RST       SSD1306_RST_PORT,SSD1306_RST_BIT
-
-// DC 10
-#define SSD1306_CS_PORT  PORTB
-#define SSD1306_CS_BIT   2
-#define SSD1306_CS       SSD1306_CS_PORT,SSD1306_CS_BIT
-
-// DC 11
-#define SSD1306_MOSI_PORT PORTB
-#define SSD1306_MOSI_BIT  3
-#define SSD1306_MOSI       SSD1306_MOSI_PORT,SSD1306_MOSI_BIT
-
-// so we can turn off SPI and use these manually to try and read pixels
-// DC 12
-#define SSD1306_MISO_PORT PORTB
-#define SSD1306_MISO_BIT  4
-#define SSD1306_MISO       SSD1306_MISO_PORT,SSD1306_MISO_BIT
-
-// DC 13
-#define SSD1306_SCK_PORT  PORTB
-#define SSD1306_SCK_BIT   5
-#define SSD1306_SCK       SSD1306_SCK_PORT,SSD1306_SCK_BIT
-
-// TFT display constants, defaults
-#define SSD1306_XSIZE   128
-#define SSD1306_YSIZE   64
-#define SSD1306_XOFFSET 0
-#define SSD1306_YOFFSET 0
-
-#define SSD1306_CHAR_X_PIXELS 5
-#define SSD1306_CHAR_Y_PIXELS 7
-#define SSD1306_CHAR_WIDTH (SSD1306_CHAR_X_PIXELS+1)
-#define SSD1306_CHAR_HEIGHT (SSD1306_CHAR_Y_PIXELS+1)
-
-#define _RGB(r, g, b) ((r) != 0 || (g) != 0 || (b) != 0)
-
-typedef int8_t color_t;
-typedef uint8_t alpha_t;
+typedef uint8_t color_t;
 
 // Color constants
-#define RGB_BLACK   _RGB(0,0,0)
-#define RGB_WHITE   _RGB(255,255,255)
+#define SSD1306_COLOR_BLACK     0  // black or off
+#define SSD1306_COLOR_WHITE     1  // white or on
+#define SSD1306_COLOR_INVERT    2  // invert
+#define SSD1306_COLOR_NONE      3  // leave as is
 
 #define SSD1306_ROT_0     0
 #define SSD1306_ROT_90    1
 #define SSD1306_ROT_180   2
 #define SSD1306_ROT_270   3
 
-#define SSD1306_INVERTED  0x80 // display color is inverted when inversion is off
-#define SSD1306_EXTERNALVCC  0x40 // external vcc, no charge pump
+// display flags
+#define SSD1306_FLAG_NONE  0
+#define SSD1306_FLAG_DOUBLE_LINE_THICKNESS      0x01
+#define SSD1306_FLAG_TEXT_DOUBLE_WIDE           0x02
+#define SSD1306_FLAG_TEXT_DOUBLE_HEIGHT         0x04
+#define SSD1306_FLAG_TEXT_WRAP                  0x08
 
-#define SSD1306_SIZE(displayType)      ((displayType) & 0x0f)
+#define SSD1306_FLAG_FONT_DOUBLE_SIZE (SSD1306_FLAG_FONT_DOUBLE_WIDE | SSD1306_FLAG_FONT_DOUBLE_HEIGHT)
 
-// OLED 0.96 128 x 64
-#define SSD1306_SIZE_096  0x00
-// OLED 0.91  128 x 32
-#define SSD1306_SIZE_091  0x01
+#define SSD1306_BITS_DASH_NONE           0b1
+#define SSD1306_SIZE_DASH_NONE           1
+#define SSD1306_BITS_DOT                 0b01
+#define SSD1306_SIZE_DOT                 2
+#define SSD1306_BITS_SPARSE_DOT          0b001
+#define SSD1306_SIZE_SPARSE_DOT          3
+#define SSD1306_BITS_DASH                0b0011
+#define SSD1306_SIZE_DASH                4
+#define SSD1306_BITS_LONG_DASH           0b00111
+#define SSD1306_SIZE_LONG_DASH           5
+#define SSD1306_BITS_DASH_DOT            0b01011
+#define SSD1306_SIZE_DASH_DOT            5
 
-// OLED 0.96 128 x 64
-#define SSD1306_TYPE_OLED_096  (SSD1306_SIZE_096)
-// OLED 0.91  128 x 32
-#define SSD1306_TYPE_OLED_091  (SSD1306_SIZE_091)
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-// 128x64 TFT display constants
-#define SSD1306_096_XSIZE   SSD1306_XSIZE
-#define SSD1306_096_YSIZE   SSD1306_YSIZE
-#define SSD1306_096_XOFFSET SSD1306_XOFFSET
-#define SSD1306_096_YOFFSET SSD1306_YOFFSET
+// initialization
+// config flag values
+#define SSD1306_EXTERNALVCC 0x01  ///< External display voltage source
+#define SSD1306_SWITCHCAPVCC 0x02 ///< Gen. display voltage from 3.3V
+extern void ssd1306_initDisplay(uint8_t configFlags);
 
-// TFT096 values
-#define SSD1306_091_XSIZE   128
-#define SSD1306_091_YSIZE   32
-#define SSD1306_091_XOFFSET 0
-#define SSD1306_091_YOFFSET 0
+// internally used functions for communication to SSD1306 via TWI
+// command transaction markers
+extern void ssd1306_startTwiCmdFrame();
+extern void ssd1306_startTwiDataFrame();
+extern void ssd1306_endTwiFrame();
 
-class Ssd1306
-{
-public:
-    uint8_t flags;
+extern void ssd1306_sendCmd(uint8_t cmd);
 
-    uint8_t maxX;
-    uint8_t maxY;
+// sending operations
+extern void ssd1306_twiByte(uint8_t byte);
+extern void ssd1306_twiRepeatedByte(uint8_t byte, uint16_t count);
+extern void ssd1306_twiPgmByteList(const uint8_t *bytes, uint16_t count);
+extern void ssd1306_twiByteList(uint8_t *bytes, uint16_t count);
 
-    color_t foreground;
-    color_t background;
+// display functions
+extern void ssd1306_setInverted();
+extern void ssd1306_clearInverted();
+extern void ssd1306_displayOff();
+extern void ssd1306_displayOn();
+extern void ssd1306_setContrast(uint8_t contrast);
+void ssd1306_clearDisplay();
+void ssd1306_display();
 
-    uint8_t rotation;
-    uint8_t sizeX;
-    uint8_t sizeY;
+// graphics functions/variables
+extern uint8_t ssd1306_sendBuffer[TWI_BUFFER_LENGTH];
+extern uint8_t ssd1306_sendPos;
 
-    uint8_t colOffset;      // char column pixel offset
-    uint8_t rowOffset;      // char row pixel offset
-    int8_t charCol;         // current column
-    int8_t charRow;         // current row
-    uint8_t maxCols;
-    uint8_t maxRows;
+extern uint8_t ssd1306_flags;               // option flags
 
-    uint8_t pageStart;      // current refresh yStart of page
-    uint8_t *buffer;        // page buffer for paged drawing
+extern int8_t ssd1306_cY; // cursor
+extern int8_t ssd1306_cX; // cursor
+extern int8_t ssd1306_cXRight; // right margin for text wrapping, normally DISPLAY_XSIZE
 
-    // with type conversions
-    explicit Ssd1306(uint8_t *pageBuffer, uint8_t typeFlags = 0);
-    void setOrientation(uint8_t rot);
-    void initDisplay(uint8_t rot);
-    void setInverted();
-    void clearInverted();
+extern color_t ssd1306_foreColor;
+extern color_t ssd1306_backColor;
 
-    // raw, no type conversions
-    void initDisplay(uint8_t rot, uint8_t xSize, uint8_t ySize, uint8_t xOffset, uint8_t yOffset, int8_t inversion);
-    void setOrientation(uint8_t rot, uint8_t xSize, uint8_t ySize, uint8_t xOffset, uint8_t yOffset);
-    void actualCoords(int &x, int &y);
-    bool isInPage(int x0, int x1, int y0, int y1);
-    bool isInPageTrimX(int &x0, int &x1, int y0, int y1);
-    bool isInPageTrimY(int x0, int x1, int &y0, int &y1);
-    bool isInPageTrimXY(int &x0, int &x1, int &y0, int &y1);
+extern uint8_t ssd1306_dashBits;            // solid/dash/dot pattern for line outlines (not text)
+extern uint8_t ssd1306_dashSize;            // solid/dash/dot pattern for line outlines (not text)
+extern uint8_t ssd1306_dashOffset;          // solid/dash/dot pattern for line outlines (not text)
 
-    void startPage(uint8_t page);
-    void updatePage();
+extern uint8_t ssd1306_displayBuffer[DISPLAY_YSIZE][DISPLAY_XSIZE / 8];      // display buffer
 
-    void startUpdate();
-    bool nextPage();
+// user display operations
+// primitives used in library
+extern uint8_t ssd1306_nextDashPixelColor();
+extern uint8_t ssd1306_nextDashBit();
+extern void setPixel(int8_t x, int8_t y, color_t color);
+extern void ssd1306_drawCircleOctants(int8_t cx, int8_t cy, int8_t x, int8_t y, uint8_t octs);
+extern void ssd1306_fillCircleOctants(int8_t cx, int8_t cy, int8_t x, int8_t y, uint8_t dummy);
+extern void ssd1306_circleQuadrant(int8_t radius, uint8_t quads);
 
-    bool isBGR();
-    color_t rgb(uint8_t r, uint8_t g, uint8_t b);
+extern void ssd1306_clearDisplay();
+extern void ssd1306_clipCursor();
 
-    void hardwareReset();
+extern void ssd1306_hLine(int8_t x0, int8_t y0, int8_t x1, color_t color);
+extern void ssd1306_vLine(int8_t x0, int8_t y0, int8_t y1, color_t color);
+extern void ssd1306_hLineTo(int8_t y1);            // draw horizontal line using foreground
+extern void ssd1306_vLineTo(int8_t x1);            // draw vertical line using foreground
+extern void ssd1306_lineTo(int8_t x1, int8_t y1); // draw line using foreground
+extern void ssd1306_rect(int8_t x1, int8_t y1);   // draw rectangle outline in foreground, fill in background
 
-    void startCmd(uint8_t cmd);
-    void endCmd();
+extern void ssd1306_circle(int8_t radius);         // draw circle centered on cursor, outline in foreground, fill in background
+extern void ssd1306_roundRect(int8_t x1, int8_t y1, int8_t r);   // draw rounded rectangle outline in foreground, fill in background
 
-    void sendByte(uint8_t byte);
-    void sendBytes(uint8_t byte, uint16_t count);
-    void sendBytes(uint8_t *bytes, uint16_t count);
-    void sendCmd(uint8_t cmd);
-    void sendCmdList(const uint8_t *p, uint8_t count);
-//    void sendWord(uint16_t word);
 
-//    void sendColor(color_t color);
-//    void sendColors(color_t color, uint16_t count);
-//    void send565(color_t color, uint16_t count);
-    void sendSetAddrWindow(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);
+#ifdef SSD1306_FANCY
+extern void ssd1306_ellipse(int8_t width, int8_t height);         // draw ellipse centered on cursor, outline in foreground, fill in background
+extern void ssd1306_putCh(char ch, int x, int y);
+extern void ssd1306_writeChar(char ch);
+extern void ssd1306_writeRepeatedChars(char ch, int count);
+extern void ssd1306_writeText(const char *text);
+extern void ssd1306_writePgmText(const char *text);
+extern void ssd1306_writeLong(long i);
+extern void ssd1306_writeULong(unsigned long i);
+extern void ssd1306_writeULongRadix(unsigned long i, uint8_t radix);
+extern void ssd1306_writeInt(int i);
+extern void ssd1306_writeUInt(unsigned int i);
+extern void ssd1306_writeUIntRadix(unsigned int i, uint8_t radix);
+extern void ssd1306_writeDigit(uint8_t dig);
 
-    void clearScreen();
+extern uint8_t ssd1306_writeTextSubStr(const char *text, uint8_t count);
+#endif
 
-    void setPixel(int x, int y, color_t color);
-//    void sendPixels(color_t color, uint16_t count);
-
-    void hLine(int x0, int x1, int y, color_t color);
-    void vLine(int x, int y0, int y1, color_t color);
-    void hLineRaw(int x0, int x1, int y, color_t color);
-    void vLineRaw(int x, int y0, int y1, color_t color);
-    void line(int x0, int y0, int x1, int y1, color_t color);
-    void rect(int x0, int y0, int x1, int y1, color_t color);
-    void fillRect(int x0, int y0, int x1, int y1, color_t color);
-
-    void circleQuadrant(int cx, int cy, int radius, uint8_t quads, color_t color);
-    void circle(int cx, int cy, int radius, color_t color);
-    void roundRect(int x0, int y0, int x1, int y1, int r, color_t color);
-    void fillCircle(int cx, int cy, int radius, color_t color);
-    void ellipse(int cx, int cy, int width, int height, color_t color);
-    void fillEllipse(int cx, int cy, int width, int height, color_t color);
-
-    void charOffset(uint8_t x, uint8_t y);
-    void charCenterOffset();
-    void gotoCharXY(int col, int row);
-    void advanceCursor();
-    void putCh(char ch, int x, int y);
-    void write(char ch);
-    void write(char ch, int count);
-    void write(const char *text);
-    void write(const __FlashStringHelper *text);
-    void write(long i);
-    void write(unsigned long i);
-    void writeHex(long i);
-    void writeHex(int i);
-    void writeDigit(int dig);
-    void write(int i);
-
-    uint8_t write(const char *text, uint8_t count);
-    void write(const char *buff, uint8_t pos, char c);
-    void write(unsigned long i, uint8_t pos, char c);
-    void write(long i, uint8_t pos, char c);
-
-    void openSPI();
-    void closeSPI();
-
-    static int intSqrt(long val);
-};
-
+#ifdef __cplusplus
+}
+#endif
 // helper functions
-// calculate integer value of square root
 
 #endif // _SSD1306_H_
