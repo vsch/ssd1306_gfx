@@ -656,27 +656,29 @@ bool ssd1306_putCh(char ch) {
                             ssd1306_setPixel((int16_t) (ssd1306_cX + col), (int8_t) (ssd1306_cY + row), color);
                             break;
                     }
+                }
+            }
 
-                    // FIX: these overlap between lines, issue if using invert
-                    if (ssd1306_backColor != SSD1306_COLOR_NONE) {
-                        if (ssd1306_textFlags & SSD1306_TEXT_FLAG_BORDER_CHAR) {
-                            // add left border
-                            ssd1306_vLine(ssd1306_cX - 1, ssd1306_cY - 1, ssd1306_cY + ssd1306_cSizeY - 1, ssd1306_backColor);
-                            ssd1306_textFlags &= ~SSD1306_TEXT_FLAG_BORDER_CHAR;
-                        }
+            // FIX: these overlap between lines, issue if using invert
+            if (ssd1306_backColor != SSD1306_COLOR_NONE) {
+                if (ssd1306_textFlags & SSD1306_TEXT_FLAG_BORDER_CHAR) {
+                    // add left border
+                    ssd1306_vLine(ssd1306_cX - 1, ssd1306_cY - 1, ssd1306_cY + ssd1306_cSizeY - 1, ssd1306_backColor);
+                    ssd1306_textFlags &= ~SSD1306_TEXT_FLAG_BORDER_CHAR;
+                }
 
-                        if (ssd1306_textFlags & SSD1306_TEXT_FLAG_BORDER_LINE) {
-                            // add top border
-                            ssd1306_hLine(ssd1306_cX, ssd1306_cY - 1, ssd1306_cX + ssd1306_cSizeX - 1, ssd1306_backColor);
-                        }
-                    }
+                if (ssd1306_textFlags & SSD1306_TEXT_FLAG_BORDER_LINE) {
+                    // add top border
+                    ssd1306_hLine(ssd1306_cX, ssd1306_cY - 1, ssd1306_cX + ssd1306_cSizeX - 1, ssd1306_backColor);
                 }
             }
 
             // add bottom and right borders always
             // FIX: these overlap between lines, issue if using invert
-            ssd1306_hLine(ssd1306_cX, ssd1306_cY + ssd1306_cSizeY - 1, ssd1306_cX + ssd1306_cSizeX - 1, ssd1306_backColor);
-            ssd1306_vLine(ssd1306_cX + ssd1306_cSizeX - 1, ssd1306_cY, ssd1306_cY + ssd1306_cSizeY - 2, ssd1306_backColor);
+            if (ssd1306_backColor != SSD1306_COLOR_NONE) {
+                ssd1306_hLine(ssd1306_cX, ssd1306_cY + ssd1306_cSizeY - 1, ssd1306_cX + ssd1306_cSizeX - 1, ssd1306_backColor);
+                ssd1306_vLine(ssd1306_cX + ssd1306_cSizeX - 1, ssd1306_cY, ssd1306_cY + ssd1306_cSizeY - 2, ssd1306_backColor);
+            }
         }
         return true;
     }
@@ -850,9 +852,9 @@ void ssd1306_printNumber(uint32_t n, uint8_t radix, uint8_t pad, char ch, char i
     if (pad > len) {
         // left pad with spaces or given chars
         ssd1306_printChars(ch ? ch : ' ', pad - len - (insertCh ? 1 : 0));
-        if (insertCh) ssd1306_printChar(insertCh);
     }
 
+    if (insertCh) ssd1306_printChar(insertCh);
     ssd1306_printText(str);
 
 #ifdef SERIAL_DEBUG_GFX
@@ -868,21 +870,21 @@ void ssd1306_printInt32(int32_t i) {
 
 void ssd1306_printInt32Pad(int32_t n, uint8_t radix, uint8_t pad, char ch) {
     if (radix < 2 || radix == 10) {
+        char insCh = 0;
         if (n < 0) {
             if (ch == 0) {
                 ch = ' ';
             }
 
-            char insCh = '-';
+            insCh = '-';
             if (!pad || ch == ' ') {
                 ssd1306_printChar('-');
+                if (pad) pad--;
                 insCh = 0;
-                pad--;
             }
             n = -n;
-            ssd1306_printNumber(n, 10, pad, ch, insCh);
         }
-        ssd1306_printNumber(n, 10, pad, ch, 0);
+        ssd1306_printNumber(n, 10, pad, ch, insCh);
     } else {
         ssd1306_printNumber(n, radix, 0, 0, 0);
     }
