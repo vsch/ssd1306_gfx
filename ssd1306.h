@@ -15,12 +15,13 @@ extern "C" {
 #include "twi.h"
 
 extern uint8_t ssd1306_sendBuffer[TWI_BUFFER_LENGTH];
+extern uint8_t ssd1306_sendPos;
 
 // initialization
 // config flag values
-#define SSD1306_EXTERNALVCC 0x01  ///< External display voltage source
-#define SSD1306_SWITCHCAPVCC 0x02 ///< Gen. display voltage from 3.3V
-extern void ssd1306_initDisplay(uint8_t configFlags);
+#define SSD1306_SWITCHCAPVCC    0x01 ///< Gen. display voltage from 3.3V, otherwise external vcc is used
+
+extern void ssd1306_initDisplay();
 
 // internally used functions for communication to SSD1306 via TWI
 // command transaction markers

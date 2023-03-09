@@ -1,0 +1,338 @@
+//---------------------------------------------------------------------------
+// GLOBAL DEFINES
+#define F_CPU       (16000000L/2)       // run CPU at 8 MHz or 16 MHz
+#define LED         5                   // Boarduino LED on PB5
+
+#define PORTB_OUT 0x2E
+
+// ---------------------------------------------------------------------------
+// INCLUDES
+#include <Arduino.h>
+#include <avr/io.h>         // deal with port registers
+#include <util/delay.h>     // used for _delay_ms function
+#include <stdlib.h>
+#include "ssd1306_display.h"
+#include "ssd1306.h"
+#include "ssd1306_gfx.h"
+#include "Ssd1306Display.h"
+
+#define DISPLAY_TYPE SSD1306_TYPE_OLED_091 /*| SSD1306_INVERTED*/ /*| SSD1306_EXTERNALVCC*/
+
+// ---------------------------------------------------------------------------
+// MISC ROUTINES
+// put into a routine to remove code inlining at cost of timing accuracy
+void msDelay(int delay) {
+    for (int i = 0; i < delay; i++) _delay_ms(1);
+}
+
+// flash the on-board LED at ~ 3 Hz
+void FlashLED(uint8_t count) {
+    for (; count > 0; count--) {
+        setBit(PORTB, LED);      // turn LED on
+        msDelay(150);           // wait
+        clearBit(PORTB, LED);    // turn LED off
+        msDelay(150);           // wait
+    }
+}
+
+int interTestDelay = 2500;
+Ssd1306Display display;
+
+// --------------------------------------------------------------------------- // TEST ROUTINES
+// draws 250 pixels on the screen
+void PixelTest(uint8_t alpha) {
+    for (int i = 250; i > 0; i--) // do a whole bunch:
+    {
+        int x = rand() % DISPLAY_XSIZE; // random x coordinate
+        int y = rand() % DISPLAY_YSIZE; // random y coordinate
+        display.setPixel(x, y, SSD1306_COLOR_WHITE); // draw pixel at x,y
+    }
+}
+
+// sweeps Line routine through all four quadrants.
+void LineTest3() {
+    int x, y, x0 = DISPLAY_XSIZE / 2, y0 = DISPLAY_YSIZE / 2;
+    display.setForeColor(SSD1306_COLOR_WHITE);
+
+    for (x = 0; x < DISPLAY_XSIZE - 1; x += 2) {
+        display.setCursor(x0, y0);
+        display.lineTo(x, 0);
+    }
+    for (y = 0; y < DISPLAY_YSIZE - 1; y += 2) {
+        display.setCursor(x0, y0);
+        display.lineTo(DISPLAY_XSIZE - 1, y);
+    }
+    for (x = DISPLAY_XSIZE - 1; x > 0; x -= 2) {
+        display.setCursor(x0, y0);
+        display.lineTo(x, DISPLAY_YSIZE - 1);
+    }
+    for (y = DISPLAY_YSIZE - 1; y > 0; y -= 2) {
+        display.setCursor(x0, y0);
+        display.lineTo(0, y);
+    }
+}
+
+void LineTest1() {
+    int x, y, x0 = DISPLAY_XSIZE / 2, y0 = DISPLAY_YSIZE / 2;
+
+    for (y = 0; y < DISPLAY_YSIZE - 1; y += 2) {
+        display.setCursor(x0, y0);
+        display.lineTo(DISPLAY_XSIZE - 1, y);
+    }
+    for (y = DISPLAY_YSIZE - 1; y > 0; y -= 2) {
+        display.setCursor(x0, y0);
+        display.lineTo(0, y);
+    }
+}
+
+void LineTest2() {
+    int x, y, x0 = DISPLAY_XSIZE / 2, y0 = DISPLAY_YSIZE / 2;
+
+    for (x = 0; x < DISPLAY_XSIZE - 1; x += 2) {
+        display.setCursor(x0, y0);
+        display.lineTo(x, 0);
+    }
+    for (x = DISPLAY_XSIZE - 1; x > 0; x -= 2) {
+        display.setCursor(x0, y0);
+        display.lineTo(x, DISPLAY_YSIZE - 1);
+    }
+}
+
+// draw series of concentric circles
+void CircleTest() {
+
+    display.setForeColor(SSD1306_COLOR_WHITE);
+    display.setCursor(DISPLAY_XSIZE / 2, DISPLAY_YSIZE / 2);
+
+    for (int radius = 6; radius < 60; radius += 2) {
+        display.circle(radius);
+    }
+}
+
+#define rad 40
+
+void ColorCircleTest() {
+    int cx = DISPLAY_XSIZE / 2;
+    int cy = DISPLAY_YSIZE / 2;
+
+    int cx1 = cx;
+    int cx2 = cx - rad / 2;
+    int cx3 = cx + rad / 2;
+    int cy1 = cy - (433 * rad) / 750; // sqrt(3)/3 * rad
+    int cy2 = cy + (433 * rad) / 1500; // sqrt(3)/6 * rad
+    int cy3 = cy2;
+
+    display.setCursor(cx, cy);
+    display.setLinePattern(SSD1306_DASH_NONE);
+    display.setColors(SSD1306_COLOR_WHITE, SSD1306_COLOR_WHITE, SSD1306_COLOR_BLACK);
+    display.circle(rad);
+
+    display.setLinePattern(SSD1306_DASH);
+    display.setColors(SSD1306_COLOR_INVERT, SSD1306_COLOR_INVERT, SSD1306_COLOR_NONE);
+    display.circle(rad * 3 / 2);
+
+    display.setLinePattern(SSD1306_DASH_DOT);
+    display.setColors(SSD1306_COLOR_INVERT, SSD1306_COLOR_INVERT, SSD1306_COLOR_NONE);
+    display.circle(rad / 2);
+}
+
+// Fills screen with characters
+void FillChars() {
+    uint8_t maxCols = DISPLAY_XSIZE / CHAR_WIDTH;
+    uint8_t maxRows = DISPLAY_YSIZE / CHAR_HEIGHT;
+
+    Serial.print("Fill chars maxCols: ");
+    Serial.print(maxCols);
+    Serial.print(" maxRows: ");
+    Serial.println(maxRows);
+
+    int chars = maxCols * maxRows;
+    int xMargin = (DISPLAY_XSIZE - maxCols * CHAR_WIDTH) / 2;
+    int yMargin = (DISPLAY_YSIZE - maxRows * CHAR_HEIGHT) / 2;
+
+    for (int i = 0; i < chars; i++) {
+        int x = i % maxCols;
+        int y = i / maxCols;
+        char ascii = static_cast<char>((i % 96) + 32);
+        display.setCursor(x * CHAR_WIDTH + xMargin, y * CHAR_HEIGHT + yMargin);
+        display.putCh(ascii);
+    }
+}
+
+#define SHOW_TIMING
+
+/*
+  SerialEvent occurs whenever a new data comes in the hardware serial RX. This
+  routine is run between each time loop() runs, so using delay inside loop can
+  delay response. Multiple bytes of data may be available.
+*/
+void serialEvent() {
+    while (Serial.available()) {
+        // drain port
+        Serial.read();
+    }
+}
+
+void SetupPorts() {
+    DDRB = PORTB_OUT; // 0010.1110; set B1, B2-B3, B5 as outputs
+    DDRC = 0x00; // 0000.0000; set PORTC as inputs
+    DDRD = 0x70; // 0111.0000; set PORTD 4,5,6 as output
+    PORTD = 0;
+}
+
+// --------------------------------------------------------------------------- // MAIN PROGRAM
+void setup() {
+    Serial.begin(57600);
+
+    SetupPorts();                               // use PortB for LCD interface
+    FlashLED(1);                                // indicate program start
+
+    Serial.println("Setup ports");
+    Serial.println("Started spi");
+    display.initDisplay();                              // initialize TFT controller
+    Serial.println("Initialized display");
+}
+
+void loop() {
+    long id, id2, id3;
+
+//*
+    for (int c = 0; c < 2; c++) {
+        if (c == 0) {
+            display.setColors(SSD1306_COLOR_WHITE, SSD1306_COLOR_BLACK);
+        } else {
+            display.setColors(SSD1306_COLOR_BLACK, SSD1306_COLOR_WHITE);
+        }
+
+        display.clearScreen();
+        FillChars();                            // show full screen of ASCII chars
+        msDelay(interTestDelay);
+    }
+
+    for (int c = 0; c < 2; c++) {
+        if (c == 0) {
+            display.setColors(SSD1306_COLOR_WHITE, SSD1306_COLOR_BLACK);
+        } else {
+            display.setColors(SSD1306_COLOR_BLACK, SSD1306_COLOR_WHITE);
+        }
+
+        display.clearScreen();
+        int x, y, x0 = DISPLAY_XSIZE / 2, y0 = DISPLAY_YSIZE / 2;
+        display.setCursor(x0, y0);
+        display.rect(x0 - 1, y0 - 1);
+        display.setCursor(x0, y0);
+        display.rect(DISPLAY_XSIZE - 1, DISPLAY_YSIZE - 1);
+        msDelay(interTestDelay);
+    }
+
+    for (int c = 0; c < 2; c++) {
+        if (c == 0) {
+            display.setColors(SSD1306_COLOR_WHITE, SSD1306_COLOR_BLACK);
+        } else {
+            display.setColors(SSD1306_COLOR_BLACK, SSD1306_COLOR_WHITE);
+        }
+
+        display.clearScreen();
+        LineTest1();
+        msDelay(interTestDelay);
+    }
+
+    for (int c = 0; c < 2; c++) {
+        if (c == 0) {
+            display.setColors(SSD1306_COLOR_WHITE, SSD1306_COLOR_BLACK);
+        } else {
+            display.setColors(SSD1306_COLOR_BLACK, SSD1306_COLOR_WHITE);
+        }
+
+        display.clearScreen();
+        LineTest2();
+        msDelay(interTestDelay);
+    }
+
+//*
+    for (int c = 0; c < 2; c++) {
+        if (c == 0) {
+            display.setColors(SSD1306_COLOR_WHITE, SSD1306_COLOR_BLACK);
+        } else {
+            display.setColors(SSD1306_COLOR_BLACK, SSD1306_COLOR_WHITE);
+        }
+
+        display.clearScreen();
+        display.setForeColor(SSD1306_COLOR_WHITE);
+
+        ColorCircleTest();
+        msDelay(interTestDelay / 4);
+
+        display.setColors(SSD1306_COLOR_WHITE, SSD1306_COLOR_BLACK);
+
+        // text to display
+        display.setTextCursor(4, 3);
+        display.moveBy(3, 5);
+        display.setColors(SSD1306_COLOR_WHITE, SSD1306_COLOR_BLACK);
+        display.print(F("Hello, World!"));                       // display text inside oval
+
+        msDelay(interTestDelay);
+
+        id = 0xF0E1D2C3; //ReadID();
+
+        msDelay(interTestDelay);
+    }
+//*/
+
+    display.setColors(SSD1306_COLOR_WHITE, SSD1306_COLOR_BLACK);
+
+    int totalLines = 2;
+    int totalColumns = 14;
+    int maxCols = DISPLAY_XSIZE / CHAR_WIDTH;
+    int col0 = (maxCols - totalColumns) / 2;
+    int maxRows = DISPLAY_YSIZE / CHAR_HEIGHT;
+    int line0 = (maxRows - totalLines) / 2;
+
+    Serial.print("maxCols: ");
+    Serial.print(maxCols);
+    Serial.print(" maxRows: ");
+    Serial.println(maxRows);
+
+//*
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-noreturn"
+#ifdef SHOW_TIMING
+    unsigned long end = micros();
+    unsigned long prevStart = end;
+    unsigned long start = end;
+#endif
+    for (
+            uint8_t iter = 0;; iter++) {
+#ifdef SHOW_TIMING
+        start = prevStart;
+        prevStart = end;
+#endif
+
+#ifdef SHOW_TIMING
+        display.setTextCursor(col0, line0);
+        display.moveBy(-1, -1);
+        display.rect((col0 + totalColumns) * SSD1306_CHAR_WIDTH, (line0 + totalLines) * SSD1306_CHAR_HEIGHT);
+#else
+        display.setCursor(col * SSD1306_CHAR_WIDTH - 1, line * SSD1306_CHAR_HEIGHT - 1);
+        display.fillRect((col + 15) * SSD1306_CHAR_WIDTH, (line + 12) * SSD1306_CHAR_HEIGHT);
+#endif
+
+        int line = line0;
+        int col = col0;
+
+#ifdef SHOW_TIMING
+        display.setTextCursor(col, line++);
+        display.print(F(" TIME "));
+        display.print((int32_t)(end - start));
+#endif
+        display.setTextCursor(col, line++);
+        display.print(F("--------------"));
+    }
+
+    end = micros();
+
+//        msDelay(1000);
+}
+
+#pragma clang diagnostic pop
+

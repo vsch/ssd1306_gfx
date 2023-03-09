@@ -20,10 +20,11 @@
 // ---------------------------------------------------------------------------
 
 uint8_t ssd1306_sendBuffer[TWI_BUFFER_LENGTH];
+uint8_t ssd1306_sendPos;
 
-void ssd1306_initDisplay(uint8_t configFlags) {
+void ssd1306_initDisplay() {
     ssd1306_sendPos = 0;
-    ssd1306_clearDisplay();
+    ssd1306_clearScreen();
     twi_init();
     twi_setFrequency(400000L);
 
@@ -45,7 +46,7 @@ void ssd1306_initDisplay(uint8_t configFlags) {
             SSD1306_CHARGEPUMP                    // 0x8D
     };
     ssd1306_twiPgmByteList(init2, sizeof(init2));
-    ssd1306_twiByte((configFlags & SSD1306_EXTERNALVCC) ? SSD1306_CHARGEPUMP_DISABLE : SSD1306_CHARGEPUMP_ENABLE);
+    ssd1306_twiByte(!(SSD1306_CONFIG_FLAGS & SSD1306_SWITCHCAPVCC) ? SSD1306_CHARGEPUMP_DISABLE : SSD1306_CHARGEPUMP_ENABLE);
 
     static const uint8_t PROGMEM init3[] = {
             SSD1306_MEMORYMODE,                   // 0x20
@@ -91,7 +92,7 @@ void ssd1306_initDisplay(uint8_t configFlags) {
 #endif
 
     ssd1306_twiByte(SSD1306_SETPRECHARGE); // 0xd9
-    ssd1306_twiByte((configFlags & SSD1306_EXTERNALVCC) ? 0x22 : 0xF1);
+    ssd1306_twiByte(!(SSD1306_CONFIG_FLAGS & SSD1306_SWITCHCAPVCC) ? 0x22 : 0xF1);
     static const uint8_t PROGMEM init5[] = {
             SSD1306_SETVCOMDETECT,               // 0xDB
             0x40,                                // reset default
@@ -133,9 +134,9 @@ void ssd1306_endTwiFrame() {
 
 // actually send command and wait for completion
 void ssd1306_sendCmd(uint8_t cmd) {
-    startCmd();
+    ssd1306_startTwiCmdFrame();
     ssd1306_twiByte(cmd);
-    endFrame();
+    ssd1306_endTwiFrame();
 }
 
 void ssd1306_twiRepeatedByte(uint8_t byte, uint16_t count) {

@@ -118,16 +118,16 @@ const uint8_t FONT_CHARS[96][SSD1306_CHAR_X_PIXELS] PROGMEM = {
         0x08, 0x1C, 0x2A, 0x08, 0x08, // 0x7F - <-
 };
 
-uint8_t ssd1306_sendPos;
+uint8_t ssd1306_flags;              // option flags
+int8_t ssd1306_cSizeX;              // updated when text size flags change
+int8_t ssd1306_cSizeY;              // updated when text size flags change
 
-uint8_t ssd1306_flags;               // option flags
-uint8_t ssd1306_cSizeX;           // updated when text size flags change
-uint8_t ssd1306_cSizeY;          // updated when text size flags change
-
-int16_t ssd1306_cX; // cursor
-int16_t ssd1306_cLeft; // left margin for text wrapping
-int16_t ssd1306_cRight; // right margin for text wrapping
-int8_t ssd1306_cY; // cursor
+int16_t ssd1306_cX;                 // cursor
+int16_t ssd1306_maxX;                // max X value when printing a string and wrapping
+int16_t ssd1306_marginLeft;              // left margin for text wrapping
+int16_t ssd1306_marginRight;             // right margin for text wrapping
+int8_t ssd1306_cY;                  // cursor
+int8_t ssd1306_maxY;                // max Y value when printing a string and wrapping
 
 color_t ssd1306_foreColor;
 color_t ssd1306_gapColor;
@@ -139,10 +139,10 @@ uint8_t ssd1306_dashOffset;          // solid/dash/dot pattern for line outlines
 
 uint8_t ssd1306_displayBuffer[DISPLAY_YSIZE / 8][DISPLAY_XSIZE];      // display buffer
 
-void ssd1306_clearDisplay() {
+void ssd1306_clearScreen() {
     ssd1306_flags = 0;
-    ssd1306_cSizeX = CHAR_WIDTH;             // updated when text size flags change
-    ssd1306_cSizeY = CHAR_HEIGHT;           // updated when text size flags change
+    ssd1306_cSizeX = CHAR_WIDTH;    // updated when text size flags change
+    ssd1306_cSizeY = CHAR_HEIGHT;   // updated when text size flags change
     ssd1306_foreColor = SSD1306_COLOR_WHITE;
     ssd1306_gapColor = SSD1306_COLOR_BLACK;
     ssd1306_backColor = SSD1306_COLOR_BLACK;
@@ -150,8 +150,8 @@ void ssd1306_clearDisplay() {
     ssd1306_dashSize = SSD1306_SIZE_DASH_NONE;
     ssd1306_cX = 0;
     ssd1306_cY = 0;
-    ssd1306_cLeft = 0;
-    ssd1306_cRight = DISPLAY_XSIZE;
+    ssd1306_marginLeft = 0;
+    ssd1306_marginRight = DISPLAY_XSIZE;
     memset(ssd1306_displayBuffer, 0, sizeof(ssd1306_displayBuffer));
 }
 
@@ -177,6 +177,15 @@ void ssd1306_setPixel(int16_t x, int8_t y, color_t color) {
             ssd1306_displayBuffer[page][x] ^= mask;
         }
     }
+}
+
+void ssd1306_setLinePattern(uint16_t pattern) {
+    ssd1306_dashBits = GET_DASH_BITS(pattern);
+    ssd1306_dashSize = GET_DASH_SIZE(pattern);
+}
+
+uint16_t ssd1306_getLinePattern() {
+    return DASH_PATTERN(ssd1306_dashBits, ssd1306_dashSize);
 }
 
 uint8_t ssd1306_nextDashBit() {
@@ -268,7 +277,8 @@ void ssd1306_lineTo(int16_t x1, int8_t y1) {
     int8_t dx = abs(x1 - ssd1306_cX), sx = ssd1306_cX < x1 ? 1 : -1;
     int8_t dy = abs(y1 - ssd1306_cY), sy = ssd1306_cY < y1 ? 1 : -1;
 
-    int8_t err = (dx > dy ? dx : -dy) / 2, e2;
+    int8_t e2;
+    int8_t err = (int8_t) ((dx > dy ? dx : -dy) / 2);
     uint8_t skip = ssd1306_flags & SSD1306_FLAG_CONTINUED_PATH;
 
     for (;;) {
@@ -336,52 +346,87 @@ void ssd1306_rect(int16_t x1, int8_t y1) {
 // to be able to use dashed line drawing
 
 void ssd1306_fillCircleOctants(int16_t cx, int8_t cy, int16_t x, int8_t y, uint8_t octs) {
-    if (octs & 0x01) ssd1306_hLine(cx, cy - y, cx + x, ssd1306_backColor);
-    if (octs & 0x02) ssd1306_vLine(cx + x, cy, cy - x, ssd1306_backColor);
-    if (octs & 0x04) ssd1306_vLine(cx + y, cy, cy + y, ssd1306_backColor);
-    if (octs & 0x08) ssd1306_hLine(cx, cy + y, cx + y, ssd1306_backColor);
-    if (octs & 0x10) ssd1306_hLine(cx, cy + y, cx - y, ssd1306_backColor);
-    if (octs & 0x20) ssd1306_vLine(cx - y, cy + x, cx - x, ssd1306_backColor);
-    if (octs & 0x40) ssd1306_vLine(cx - y, cy - x, cx - x, ssd1306_backColor);
-    if (octs & 0x80) ssd1306_hLine(cx, cy - x, cx - x, ssd1306_backColor);
+    if (octs & SSD1306_OCT_1) ssd1306_hLine(cx, cy - y, cx + x, ssd1306_backColor);
+    if (octs & SSD1306_OCT_2) ssd1306_vLine(cx + x, cy, cy - x, ssd1306_backColor);
+    if (octs & SSD1306_OCT_3) ssd1306_vLine(cx + y, cy, cy + y, ssd1306_backColor);
+    if (octs & SSD1306_OCT_4) ssd1306_hLine(cx, cy + y, cx + y, ssd1306_backColor);
+    if (octs & SSD1306_OCT_5) ssd1306_hLine(cx, cy + y, cx - y, ssd1306_backColor);
+    if (octs & SSD1306_OCT_6) ssd1306_vLine(cx - y, cy + x, cx - x, ssd1306_backColor);
+    if (octs & SSD1306_OCT_7) ssd1306_vLine(cx - y, cy - x, cx - x, ssd1306_backColor);
+    if (octs & SSD1306_OCT_8) ssd1306_hLine(cx, cy - x, cx - x, ssd1306_backColor);
 }
 
 void ssd1306_drawCircleOctants(int16_t cx, int8_t cy, int16_t x, int8_t y, uint8_t octs) {
-    if (octs & 0x01) ssd1306_setPixel(cx + x, cy - y, ssd1306_nextDashPixelColor());
-    if (octs & 0x02) ssd1306_setPixel(cx + y, cy - x, ssd1306_nextDashPixelColor());
-    if (octs & 0x04) ssd1306_setPixel(cx + y, cy + x, ssd1306_nextDashPixelColor());
-    if (octs & 0x08) ssd1306_setPixel(cx + x, cy + y, ssd1306_nextDashPixelColor());
-    if (octs & 0x10) ssd1306_setPixel(cx - x, cy + y, ssd1306_nextDashPixelColor());
-    if (octs & 0x20) ssd1306_setPixel(cx - y, cy + x, ssd1306_nextDashPixelColor());
-    if (octs & 0x40) ssd1306_setPixel(cx - y, cy - x, ssd1306_nextDashPixelColor());
-    if (octs & 0x80) ssd1306_setPixel(cx - x, cy - y, ssd1306_nextDashPixelColor());
+    if (octs & SSD1306_OCT_1) ssd1306_setPixel(cx + x, cy - y, ssd1306_nextDashPixelColor());
+    if (octs & SSD1306_OCT_2) ssd1306_setPixel(cx + y, cy - x, ssd1306_nextDashPixelColor());
+    if (octs & SSD1306_OCT_3) ssd1306_setPixel(cx + y, cy + x, ssd1306_nextDashPixelColor());
+    if (octs & SSD1306_OCT_4) ssd1306_setPixel(cx + x, cy + y, ssd1306_nextDashPixelColor());
+    if (octs & SSD1306_OCT_5) ssd1306_setPixel(cx - x, cy + y, ssd1306_nextDashPixelColor());
+    if (octs & SSD1306_OCT_6) ssd1306_setPixel(cx - y, cy + x, ssd1306_nextDashPixelColor());
+    if (octs & SSD1306_OCT_7) ssd1306_setPixel(cx - y, cy - x, ssd1306_nextDashPixelColor());
+    if (octs & SSD1306_OCT_8) ssd1306_setPixel(cx - x, cy - y, ssd1306_nextDashPixelColor());
 }
 
 // here we can go efficiently and draw 8 pixels and only processing one octant
 // or draw only 1 pixel and process a quadrant at a time but preserve circumference pixel drawing
 // order so as to preserve dash pattern
+
+#define MAX_DECISIONS 64
+
 void ssd1306_circleOctants(int8_t r, uint8_t asQuadrants, uint8_t octs, circleOctants drawOctants) {
-    int8_t xc = ssd1306_cX, yc = ssd1306_cY;
-    int8_t x = 0, y = r;
-    int8_t *e = asQuadrants ? &r : &y; // draw quadrants if requested
+    int16_t xc = ssd1306_cX;
+    int8_t yc = ssd1306_cY;
+    int16_t x = 0;
+    int8_t y = r;
     int16_t d = 3 - 2 * r;
+    uint8_t ds[MAX_DECISIONS / 8];  // decisions for quads
+    uint8_t dc = 0;
 
-    drawOctants(xc, yc, x, y, octs & 0x55);
+    if (ssd1306_flags & SSD1306_FLAG_CONTINUED_PATH) ssd1306_flags &= ~SSD1306_FLAG_CONTINUED_PATH;
+    else drawOctants(xc, yc, x, y, octs & SSD1306_QUADS_ALL);
 
-    while (x <= *e) {
+    while (x < y && dc < MAX_DECISIONS) {
         // for each pixel we will
         // draw all eight pixels or only one for the current quadrant if dashed lines
         x++;
 
         // check for decision parameter and correspondingly update d, x, y
+        uint8_t dp = dc >> 3;
+        uint8_t db = 1 << (dc & 7);
+        dc++;
         if (d > 0) {
             y--;
             d = d + 4 * (x - y) + 10;
+            ds[dp] |= db;
         } else {
             d = d + 4 * x + 6;
+            ds[dp] &= ~db;
         }
 
+//        printf("Forw oct %d: x: %d, y: %d\n", octs, x, y);
         drawOctants(xc, yc, x, y, octs);
+    }
+
+    if (asQuadrants) {
+        // repeat, reversing order
+        uint8_t noSkip = x <= y;
+        while (x > 1) {
+            x--;
+
+            // for each pixel we will
+            // draw all eight pixels or only one for the current quadrant if dashed lines
+            --dc;
+            uint8_t dp = dc >> 3;
+            uint8_t db = 1 << (dc & 7);
+            // check for decision parameter and correspondingly update d, x, y
+            if (ds[dp] & db) {
+                y++;
+            }
+
+//            printf("Back oct %d: x: %d, y: %d\n", octs << 1, x, y);
+            if (noSkip) drawOctants(xc, yc, x, y, octs << 1);
+            noSkip = 1;
+        }
     }
 }
 
@@ -389,7 +434,7 @@ void ssd1306_circleOctants(int8_t r, uint8_t asQuadrants, uint8_t octs, circleOc
 void ssd1306_circle(int8_t radius) {
     // first fill
     // then outline
-    if (ssd1306_dashBits == SSD1306_BITS_DASH_NONE && ssd1306_dashSize == SSD1306_SIZE_DASH_NONE) {
+    if (ssd1306_foreColor != SSD1306_COLOR_INVERT && ssd1306_dashBits == SSD1306_BITS_DASH_NONE && ssd1306_dashSize == SSD1306_SIZE_DASH_NONE) {
         // do all 8 octants
         if (ssd1306_backColor != SSD1306_COLOR_NONE) {
             ssd1306_circleOctants(radius, 0, 0xff, ssd1306_fillCircleOctants);
@@ -397,39 +442,52 @@ void ssd1306_circle(int8_t radius) {
 
         ssd1306_circleOctants(radius, 0, 0xff, ssd1306_drawCircleOctants);
     } else {
-        uint8_t octants; // do one quadrant at a time in order, to preserve dash pattern
-        for (octants = 0x01; octants; octants <<= 2) {
+        uint8_t octs; // do one quadrant at a time in order, to preserve dash pattern
+        for (octs = 0x01; octs; octs <<= 2) {
             if (ssd1306_backColor != SSD1306_COLOR_NONE) {
-                ssd1306_circleOctants(radius, 1, octants, ssd1306_fillCircleOctants);
+                ssd1306_circleOctants(radius, 1, octs, ssd1306_fillCircleOctants);
             }
-            ssd1306_circleOctants(radius, 1, octants, ssd1306_drawCircleOctants);
+            ssd1306_circleOctants(radius, 1, octs, ssd1306_drawCircleOctants);
         }
     }
 }
 
 // draws a rounded rectangle with corner radius r.
 // coordinates: top left = x0,y0; bottom right = x1,y1
-void ssd1306_roundRect(int16_t x1, int8_t y1, int8_t r) {
-    int8_t x0 = ssd1306_cX, y0 = ssd1306_cY;
+void ssd1306_roundRect(int16_t x1, int8_t y1, int8_t r, uint8_t octs) {
+    int16_t x0 = ssd1306_cX;
+    int8_t y0 = ssd1306_cY;
+
     ssd1306_cX += r; // x0+r
-    ssd1306_hLineTo(x1 - r); // top side
+    int16_t x;
+    int8_t y;
+
+    x = x1 - r;
+    if (octs & SSD1306_OCT_1) ssd1306_hLineTo(x); /* top side */
+    ssd1306_cX = x;
     ssd1306_cY += r; // y0+r
-    ssd1306_circleOctants(r, 1, 0x01, ssd1306_drawCircleOctants); // upper right corner
+    if (octs & SSD1306_OCT_2) ssd1306_circleOctants(r, 1, SSD1306_QUAD_1, ssd1306_drawCircleOctants); // upper right corner
 
     ssd1306_cX += r; // x1
-    ssd1306_vLineTo(y1 - r); // right side
+    y = y1 - r;
+    if (octs & SSD1306_OCT_3) ssd1306_vLineTo(y); // right side
+    ssd1306_cY = y;
     ssd1306_cX -= r; // x1-r
-    ssd1306_circleOctants(r, 1, 0x04, ssd1306_drawCircleOctants); // lower right corner
+    if (octs & SSD1306_OCT_4) ssd1306_circleOctants(r, 1, SSD1306_QUAD_2, ssd1306_drawCircleOctants); // lower right corner
 
     ssd1306_cY += r; // y1
-    ssd1306_hLineTo(x0 + r); // bottom side
+    x = x0 + r;
+    if (octs & SSD1306_OCT_5) ssd1306_hLineTo(x); // bottom side
+    ssd1306_cX = x;
     ssd1306_cY -= r; // y1-r
-    ssd1306_circleOctants(r, 1, 0x10, ssd1306_drawCircleOctants); // lower right corner
+    if (octs & SSD1306_OCT_6) ssd1306_circleOctants(r, 1, SSD1306_QUAD_3, ssd1306_drawCircleOctants); // lower right corner
 
     ssd1306_cX -= r; // x0
-    ssd1306_vLineTo(y0 + r); // left side
+    y = y0 + r;
+    if (octs & SSD1306_OCT_7) ssd1306_vLineTo(y); // left side
+    ssd1306_cY = y;
     ssd1306_cX += r; // x0+r
-    ssd1306_circleOctants(r, 1, 0x40, ssd1306_drawCircleOctants); // upper right corner
+    if (octs & SSD1306_OCT_8) ssd1306_circleOctants(r, 1, SSD1306_QUAD_4, ssd1306_drawCircleOctants); // upper right corner
 
     ssd1306_cX -= r; // x0
     ssd1306_cY -= r; // y0
@@ -528,22 +586,37 @@ void ssd1306_setTextFlags(uint8_t flags) {
     }
 }
 
-uint8_t ssd1306_isCharVisible() {
+void ssd1306_setTextColRow(int8_t x, int8_t y) {
+    ssd1306_cX = x * ssd1306_cSizeX;
+    ssd1306_cY = y * ssd1306_cSizeY;
+}
+
+bool ssd1306_isCharVisible() {
     return !(ssd1306_cX + ssd1306_cSizeX < 0 || ssd1306_cX > DISPLAY_XSIZE || ssd1306_cY + ssd1306_cSizeY < 0 ||
              ssd1306_cY > DISPLAY_YSIZE);
 }
 
-// ssd1306_write ch to display X,Y coordinates using ASCII 5x7 font
+bool ssd1306_isCharClipped() {
+    return (ssd1306_cX < 0 || ssd1306_cX + ssd1306_cSizeX >= DISPLAY_XSIZE || ssd1306_cY < 0 || ssd1306_cY + ssd1306_cSizeY > DISPLAY_YSIZE);
+}
+
+void ssd1306_newLine() {
+    ssd1306_flags &= ~SSD1306_FLAG_BORDER_TEXT_LINE;
+
+    if (ssd1306_flags & SSD1306_FLAG_TEXT_BORDER) {
+        ssd1306_flags |= SSD1306_FLAG_BORDER_TEXT_CHAR;
+    }
+
+    ssd1306_cX = ssd1306_marginLeft;
+    ssd1306_cY += ssd1306_cSizeY;
+}
+
+// ssd1306_print ch to display X,Y coordinates using ASCII 5x7 font
 bool ssd1306_putCh(char ch) {
     if (ch == '\n') {
         // go to next line and left margin
-        ssd1306_cX = ssd1306_cLeft;
-        ssd1306_cY += ssd1306_cSizeY;
-        ssd1306_flags &= ~SSD1306_FLAG_TEXT_WRAPPED | SSD1306_FLAG_BORDER_TEXT_LINE;
-
-        if (ssd1306_flags & SSD1306_FLAG_TEXT_BORDER) {
-            ssd1306_flags |= SSD1306_FLAG_BORDER_TEXT_CHAR;
-        }
+        ssd1306_flags &= ~SSD1306_FLAG_TEXT_WRAPPED;
+        ssd1306_newLine();
         return false;
     } else if (ssd1306_isCharVisible() && ssd1306_foreColor != SSD1306_COLOR_NONE && ssd1306_backColor != SSD1306_COLOR_NONE) {
         uint8_t charBits[5];
@@ -574,7 +647,7 @@ bool ssd1306_putCh(char ch) {
                         ssd1306_setPixel(ssd1306_cX + col2 + 1, ssd1306_cY + row2 + 1, color);
                         break;
                     default:
-                        ssd1306_setPixel(ssd1306_cX + col, ssd1306_cY + row, color);
+                        ssd1306_setPixel((int16_t) (ssd1306_cX + col), (int8_t) (ssd1306_cY + row), color);
                         break;
                 }
 
@@ -603,148 +676,242 @@ bool ssd1306_putCh(char ch) {
 }
 
 // writes character to display at current cursor position.
-void ssd1306_writeChar(char ch) {
+void ssd1306_printChar(char ch) {
     if (ssd1306_flags & SSD1306_FLAG_TEXT_WRAP) {
-        if (ssd1306_cX + ssd1306_cSizeX > ssd1306_cRight) {
+        if (ssd1306_cX + ssd1306_cSizeX > ssd1306_marginRight) {
             // wrap text
             ssd1306_flags |= SSD1306_FLAG_TEXT_WRAPPED;
-            ssd1306_flags &= ~SSD1306_FLAG_BORDER_TEXT_LINE;
-
-            if (ssd1306_flags & SSD1306_FLAG_TEXT_BORDER) {
-                ssd1306_flags |= SSD1306_FLAG_BORDER_TEXT_CHAR;
-            }
-
-            ssd1306_cX = ssd1306_cLeft;
-            ssd1306_cY += ssd1306_cSizeY;
+            ssd1306_newLine();
         }
+
         if (ch != ' ' || !(ssd1306_flags & SSD1306_FLAG_TEXT_WRAPPED)) {
             ssd1306_flags &= ~SSD1306_FLAG_TEXT_WRAPPED;
-            if (ssd1306_putCh(ch)) ssd1306_cX += ssd1306_cSizeX;
+            if (ssd1306_putCh(ch)) {
+                ssd1306_cX += ssd1306_cSizeX;
+                if (ssd1306_maxX < ssd1306_cX) ssd1306_maxX = ssd1306_cX;
+                if (ssd1306_maxY < ssd1306_cY + ssd1306_cSizeY) ssd1306_maxY = ssd1306_cY + ssd1306_cSizeY;
+            }
         }
     } else {
-        if (ssd1306_putCh(ch)) ssd1306_cX += ssd1306_cSizeX;
+        if (ssd1306_putCh(ch)) {
+            ssd1306_cX += ssd1306_cSizeX;
+            if (ssd1306_maxX < ssd1306_cX) ssd1306_maxX = ssd1306_cX;
+            if (ssd1306_maxY < ssd1306_cY + ssd1306_cSizeY) ssd1306_maxY = ssd1306_cY + ssd1306_cSizeY;
+        }
     }
 }
 
 // writes string to display at current cursor position.
-void ssd1306_writeRepeatedChars(char ch, uint8_t count) {
+void ssd1306_printChars(char ch, uint8_t count) {
     while (count-- > 0) {
-        ssd1306_writeChar(ch);
+        ssd1306_printChar(ch);
     }
 }
 
-void ssd1306_writeText(const char *str) {
-    while (*str) {
-        ssd1306_writeChar(*str++);
-    }
+void ssd1306_printText(const char *str) {
+    ssd1306_printPgmTextChars(str, 255);
 }
 
-void ssd1306_writePgmText(const char *str) {
-    PGM_P p = (PGM_P) (str);
-    for (;;) {
-        char c = pgm_read_byte(p++);
-        if (!c) break;
-        ssd1306_writeChar(c);
-    }
+void ssd1306_printPgmText(PGM_P str) {
+    ssd1306_printPgmTextChars(str, 255);
 }
 
 // writes string to display at current cursor position.
-uint8_t ssd1306_writeTextChars(const char *str, uint8_t count) {
+uint8_t ssd1306_printTextChars(const char *str, uint8_t count) {
+    ssd1306_maxX = ssd1306_cX;
+    ssd1306_maxY = ssd1306_cY;
     for (; *str && count; str++, count--) {
-        ssd1306_writeChar(*str);
+        ssd1306_printChar(*str);
     }
     return count;
 }
 
-uint8_t ssd1306_writePgmTextChars(PGM_P str, uint8_t count) {
+uint8_t ssd1306_printPgmTextChars(PGM_P str, uint8_t count) {
+    ssd1306_maxX = ssd1306_cX;
+    ssd1306_maxY = ssd1306_cY;
     PGM_P p = (PGM_P) (str);
     for (; count; p++, count--) {
         char c = pgm_read_byte(p);
         if (!c) break;
-        ssd1306_writeChar(c);
+        ssd1306_printChar(c);
     }
     return count;
 }
 
-void ssd1306_writeTextLeftPad(PGM_P str, char ch, uint8_t pad) {
+void ssd1306_printTextLeftPad(PGM_P str, char ch, uint8_t pad) {
+    ssd1306_maxX = ssd1306_cX;
+    ssd1306_maxY = ssd1306_cY;
     if (pad) {
         uint8_t len = strlen(str);
         if (pad > len) {
-            ssd1306_writeRepeatedChars(ch, pad - len);
+            ssd1306_printChars(ch, pad - len);
         }
     }
-    ssd1306_writeText(str);
+    ssd1306_printText(str);
 }
 
-void ssd1306_writePgmTextLeftPad(const char *str, char ch, uint8_t pad) {
+void ssd1306_printPgmTextLeftPad(const char *str, char ch, uint8_t pad) {
+    ssd1306_maxX = ssd1306_cX;
+    ssd1306_maxY = ssd1306_cY;
     if (pad) {
         uint8_t len = 0;
         PGM_P p = str;
         while (pgm_read_byte(p++) && len < pad) len++;
         if (pad > len) {
-            ssd1306_writeRepeatedChars(ch, pad - len);
+            ssd1306_printChars(ch, pad - len);
         }
     }
-    ssd1306_writeText(str);
+    ssd1306_printText(str);
+}
+
+void ssd1306_printFloat(double number, uint8_t digits) {
+    if (isnan(number)) ssd1306_printChar("nan");
+    else if (isinf(number)) ssd1306_printChar("inf");
+    else if (number > 4294967040.0) ssd1306_printChar("ovf");  // constant determined empirically
+    else if (number < -4294967040.0) ssd1306_printChar("ovf");  // constant determined empirically
+    else {
+
+        if (!digits) digits = 2;
+
+        // Handle negative numbers
+        if (number < 0.0) {
+            ssd1306_printChar('-');
+            number = -number;
+        }
+
+        // Round correctly so that ssd1306_printChar(1.999, 2) prints as "2.00"
+        double rounding = 0.5;
+        for (uint8_t i = 0; i < digits; ++i)
+            rounding /= 10.0;
+
+        number += rounding;
+
+        // Extract the integer part of the number and ssd1306_printChar it
+        unsigned long int_part = (unsigned long) number;
+        double remainder = number - (double) int_part;
+        ssd1306_printChar(int_part);
+
+        // Print the decimal point, but only if there are digits beyond
+        if (digits > 0) {
+            ssd1306_printChar('.');
+        }
+
+        // Extract digits from the remainder one at a time
+        while (digits-- > 0) {
+            remainder *= 10.0;
+            uint8_t toPrint = (unsigned int) (remainder);
+            ssd1306_printChar(toPrint);
+            remainder -= toPrint;
+        }
+    }
+}
+
+void ssd1306_printNumber(uint32_t n, uint8_t radix, uint8_t pad, char ch, char insertCh) {
+    char buf[8 * sizeof(long) + 1]; // Assumes 8-bit chars plus zero byte.
+    char *str = &buf[sizeof(buf) - 1];
+
+    *str = '\0';
+
+    if (radix < 2) radix = 10;
+
+    do {
+        char c = n % radix;
+        n /= radix;
+
+        *--str = c < 10 ? c + '0' : c + 'A' - 10;
+    } while (n);
+
+    uint8_t len = &buf[sizeof(buf) - 1] - str;
+
+    if (pad > len) {
+        // left pad with spaces or given chars
+        ssd1306_printChars(ch ? ch : ' ', pad - len - (insertCh ? 1 : 0));
+        if (insertCh) ssd1306_printChar(insertCh);
+    }
+    ssd1306_printText(str);
 }
 
 // writes integer i at current cursor position
-void ssd1306_writeInt32Pad(int32_t i, char ch, uint8_t pad) {
-    char str[8];
-    ltoa(i, str, 10);
-    ssd1306_writeTextLeftPad(str, ch, pad);
+void ssd1306_printInt32(int32_t i) {
 }
 
-void ssd1306_writeInt32(int32_t i) {
-    ssd1306_writeInt32Pad(i, 0, 0);
+void ssd1306_printInt32Pad(int32_t n, uint8_t radix, uint8_t pad, char ch) {
+    if (radix < 2 || radix == 10) {
+        if (n < 0) {
+            if (ch == 0) {
+                ch = ' ';
+            }
+
+            char insCh = '-';
+            if (!pad || ch == ' ') {
+                ssd1306_printChar('-');
+                insCh = 0;
+                pad--;
+            }
+            n = -n;
+            ssd1306_printNumber(n, 10, pad, ch, insCh);
+        }
+        ssd1306_printNumber(n, 10, pad, ch, 0);
+    } else {
+        ssd1306_printNumber(n, radix, 0, 0, 0);
+    }
 }
 
-void ssd1306_writeUInt32Pad(uint32_t i, uint8_t radix, char ch, uint8_t pad) {
-    char str[8];
-    ultoa(i, str, radix);
-    ssd1306_writeTextLeftPad(str, ch, pad);
+void ssd1306_printUInt32Pad(uint32_t i, uint8_t radix, uint8_t pad, char ch) {
+    ssd1306_printNumber(i, radix, pad, ch, 0);
 }
 
-void ssd1306_writeUInt32(uint32_t i) {
-    ssd1306_writeUInt32Pad(i, 10, 0, 0);
+void ssd1306_printUInt32(uint32_t i) {
+    ssd1306_printNumber(i, 10, 0, 0, 0);
 }
 
-void ssd1306_writeInt16Pad(int16_t i, char ch, uint8_t pad) {
-    ssd1306_writeInt32Pad(i, ch, pad);
+void ssd1306_printInt16Pad(int16_t i, uint8_t radix, uint8_t pad, char ch) {
+    ssd1306_printInt32Pad(i, radix, pad, ch);
 }
 
-void ssd1306_writeInt16(int16_t i) {
-    ssd1306_writeInt32Pad(i, 0, 0);
+void ssd1306_printInt16(int16_t i) {
+    ssd1306_printInt32Pad(i, 10, 0, 0);
 }
 
-void ssd1306_writeUInt16(uint16_t i) {
-    ssd1306_writeUInt32Pad(i, 10, 0, 0);
+void ssd1306_printUInt16(uint16_t i) {
+    ssd1306_printNumber(i, 10, 0, 0, 0);
 }
 
-void ssd1306_writeUInt16Pad(uint16_t i, uint8_t radix, char ch, uint8_t pad) {
-    ssd1306_writeUInt32Pad(i, radix, ch, pad);
+void ssd1306_printUInt16Pad(uint16_t i, uint8_t radix, uint8_t pad, char ch) {
+    ssd1306_printNumber(i, radix, pad, ch, 0);
 }
 
-void ssd1306_writeInt8Pad(int8_t i, char ch, uint8_t pad) {
-    ssd1306_writeInt32Pad(i, ch, pad);
+void ssd1306_printInt8Pad(int8_t i, uint8_t radix, uint8_t pad, char ch) {
+    ssd1306_printInt32Pad(i, radix, pad, ch);
 }
 
-void ssd1306_writeInt8(int8_t i) {
-    ssd1306_writeInt32Pad(i, 0, 0);
+void ssd1306_printInt8(int8_t i) {
+    ssd1306_printInt32Pad(i, 10, 0, 0);
 }
 
-void ssd1306_writeUInt8(uint8_t i) {
-    ssd1306_writeUInt32Pad(i, 10, 0, 0);
+void ssd1306_printUInt8(uint8_t i) {
+    ssd1306_printNumber(i, 10, 0, 0,0);
 }
 
-void ssd1306_writeUInt8Pad(uint8_t i, uint8_t radix, char ch, uint8_t pad) {
-    ssd1306_writeUInt32Pad(i, radix, ch, pad);
+void ssd1306_printUInt8Pad(uint8_t i, uint8_t radix, uint8_t pad, char ch) {
+    ssd1306_printNumber(i, radix, pad, ch, 0);
 }
 
-void ssd1306_writeDigit(uint8_t dig) {
+void ssd1306_printDigit(uint8_t dig) {
     dig &= 0x0f;
     char c = (char) (dig > 9 ? 'A' - 10 + dig : '0' + dig);
-    ssd1306_writeChar(c);
+    ssd1306_printChar(c);
+}
+
+void ssd1306_getTextBounds(const PGM_P s, int16_t x, int8_t y, int16_t *pX1, int8_t *pY1, uint8_t *pW, uint8_t *pH) {
+    int16_t sx = ssd1306_cX;
+    int8_t sy = ssd1306_cY;
+    ssd1306_printPgmText(s);
+
+    if (pX1 != NULL) *pX1 = ssd1306_cX;
+    if (pY1 != NULL) *pY1 = ssd1306_cY;
+    if (pW != NULL) *pW = ssd1306_maxX - sx;
+    if (pH != NULL) *pH = ssd1306_maxY - sy;
 }
 
 #ifdef CONSOLE_DEBUG
