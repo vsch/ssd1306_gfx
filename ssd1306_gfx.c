@@ -140,7 +140,7 @@ uint8_t ssd1306_dashOffset;          // solid/dash/dot pattern for line outlines
 uint8_t ssd1306_displayBuffer[DISPLAY_YSIZE / 8][DISPLAY_XSIZE];      // display buffer
 
 void ssd1306_clearScreen() {
-    ssd1306_flags = 0;
+    ssd1306_flags = SSD1306_FLAG_TEXT_WRAP;
     ssd1306_cSizeX = CHAR_WIDTH;    // updated when text size flags change
     ssd1306_cSizeY = CHAR_HEIGHT;   // updated when text size flags change
     ssd1306_foreColor = SSD1306_COLOR_WHITE;
@@ -609,6 +609,9 @@ void ssd1306_newLine() {
 
     ssd1306_cX = ssd1306_marginLeft;
     ssd1306_cY += ssd1306_cSizeY;
+#ifdef SERIAL_DEBUG_GFX
+    serial_printC('\n');
+#endif
 }
 
 // ssd1306_print ch to display X,Y coordinates using ASCII 5x7 font
@@ -618,7 +621,7 @@ bool ssd1306_putCh(char ch) {
         ssd1306_flags &= ~SSD1306_FLAG_TEXT_WRAPPED;
         ssd1306_newLine();
         return false;
-    } else if (ssd1306_isCharVisible() && ssd1306_foreColor != SSD1306_COLOR_NONE && ssd1306_backColor != SSD1306_COLOR_NONE) {
+    } else if (ch >= 32 && ssd1306_isCharVisible() && (ssd1306_foreColor != SSD1306_COLOR_NONE || ssd1306_backColor != SSD1306_COLOR_NONE)) {
         uint8_t charBits[5];
         *((uint32_t *) (charBits)) = pgm_read_dword((const char *) FONT_CHARS[ch - 32]);
         charBits[4] = pgm_read_byte((const char *) FONT_CHARS[ch - 32] + 4);
@@ -671,8 +674,9 @@ bool ssd1306_putCh(char ch) {
         // FIX: these overlap between lines, issue if using invert
         ssd1306_hLine(ssd1306_cX, ssd1306_cY + ssd1306_cSizeY - 1, ssd1306_cX + ssd1306_cSizeX - 1, ssd1306_backColor);
         ssd1306_vLine(ssd1306_cX + ssd1306_cSizeX - 1, ssd1306_cY, ssd1306_cY + ssd1306_cSizeY - 2, ssd1306_backColor);
+        return true;
     }
-    return true;
+    return false;
 }
 
 // writes character to display at current cursor position.
@@ -685,8 +689,11 @@ void ssd1306_printChar(char ch) {
         }
 
         if (ch != ' ' || !(ssd1306_flags & SSD1306_FLAG_TEXT_WRAPPED)) {
-            ssd1306_flags &= ~SSD1306_FLAG_TEXT_WRAPPED;
             if (ssd1306_putCh(ch)) {
+#ifdef SERIAL_DEBUG_GFX
+                serial_printC(ch);
+#endif
+                ssd1306_flags &= ~SSD1306_FLAG_TEXT_WRAPPED;
                 ssd1306_cX += ssd1306_cSizeX;
                 if (ssd1306_maxX < ssd1306_cX) ssd1306_maxX = ssd1306_cX;
                 if (ssd1306_maxY < ssd1306_cY + ssd1306_cSizeY) ssd1306_maxY = ssd1306_cY + ssd1306_cSizeY;
@@ -694,6 +701,9 @@ void ssd1306_printChar(char ch) {
         }
     } else {
         if (ssd1306_putCh(ch)) {
+#ifdef SERIAL_DEBUG_GFX
+            serial_printC(ch);
+#endif
             ssd1306_cX += ssd1306_cSizeX;
             if (ssd1306_maxX < ssd1306_cX) ssd1306_maxX = ssd1306_cX;
             if (ssd1306_maxY < ssd1306_cY + ssd1306_cSizeY) ssd1306_maxY = ssd1306_cY + ssd1306_cSizeY;
@@ -709,7 +719,7 @@ void ssd1306_printChars(char ch, uint8_t count) {
 }
 
 void ssd1306_printText(const char *str) {
-    ssd1306_printPgmTextChars(str, 255);
+    ssd1306_printTextChars(str, 255);
 }
 
 void ssd1306_printPgmText(PGM_P str) {
@@ -764,13 +774,16 @@ void ssd1306_printPgmTextLeftPad(const char *str, char ch, uint8_t pad) {
     ssd1306_printText(str);
 }
 
-void ssd1306_printFloat(double number, uint8_t digits) {
-    if (isnan(number)) ssd1306_printChar("nan");
-    else if (isinf(number)) ssd1306_printChar("inf");
-    else if (number > 4294967040.0) ssd1306_printChar("ovf");  // constant determined empirically
-    else if (number < -4294967040.0) ssd1306_printChar("ovf");  // constant determined empirically
-    else {
+const char nanStr[] PROGMEM = {"nan"};
+const char infStr[] PROGMEM = {"inf"};
+const char ovfStr[] PROGMEM = {"ovf"};
 
+void ssd1306_printFloat(double number, uint8_t digits) {
+    if (isnan(number)) ssd1306_printPgmText(nanStr);
+    else if (isinf(number)) ssd1306_printPgmText(infStr);
+    else if (number > 4294967040.0) ssd1306_printPgmText(ovfStr);  // constant determined empirically
+    else if (number < -4294967040.0) ssd1306_printPgmText(ovfStr);  // constant determined empirically
+    else {
         if (!digits) digits = 2;
 
         // Handle negative numbers
@@ -779,17 +792,17 @@ void ssd1306_printFloat(double number, uint8_t digits) {
             number = -number;
         }
 
-        // Round correctly so that ssd1306_printChar(1.999, 2) prints as "2.00"
+        // Round correctly so that ssd1306_print(1.999, 2) prints as "2.00"
         double rounding = 0.5;
         for (uint8_t i = 0; i < digits; ++i)
             rounding /= 10.0;
 
         number += rounding;
 
-        // Extract the integer part of the number and ssd1306_printChar it
+        // Extract the integer part of the number and ssd1306_print it
         unsigned long int_part = (unsigned long) number;
         double remainder = number - (double) int_part;
-        ssd1306_printChar(int_part);
+        ssd1306_printUInt32(int_part);
 
         // Print the decimal point, but only if there are digits beyond
         if (digits > 0) {
@@ -799,26 +812,33 @@ void ssd1306_printFloat(double number, uint8_t digits) {
         // Extract digits from the remainder one at a time
         while (digits-- > 0) {
             remainder *= 10.0;
-            uint8_t toPrint = (unsigned int) (remainder);
-            ssd1306_printChar(toPrint);
+            uint8_t toPrint = (uint8_t) (remainder);
+            ssd1306_printDigit(toPrint);
             remainder -= toPrint;
         }
     }
 }
 
+const char enterStr[] PROGMEM = {"enter: "};
+const char exitStr[] PROGMEM = {"exit: "};
+
 void ssd1306_printNumber(uint32_t n, uint8_t radix, uint8_t pad, char ch, char insertCh) {
     char buf[8 * sizeof(long) + 1]; // Assumes 8-bit chars plus zero byte.
     char *str = &buf[sizeof(buf) - 1];
-
     *str = '\0';
+
+#ifdef SERIAL_DEBUG_GFX
+    serial_printPgm(enterStr);
+    serial_println(str);
+#endif
 
     if (radix < 2) radix = 10;
 
     do {
-        char c = n % radix;
+        uint8_t c = n % radix;
         n /= radix;
 
-        *--str = c < 10 ? c + '0' : c + 'A' - 10;
+        *--str = (char)(c < 10 ? c + '0' : c + 'A' - 10);
     } while (n);
 
     uint8_t len = &buf[sizeof(buf) - 1] - str;
@@ -828,7 +848,13 @@ void ssd1306_printNumber(uint32_t n, uint8_t radix, uint8_t pad, char ch, char i
         ssd1306_printChars(ch ? ch : ' ', pad - len - (insertCh ? 1 : 0));
         if (insertCh) ssd1306_printChar(insertCh);
     }
+
     ssd1306_printText(str);
+
+#ifdef SERIAL_DEBUG_GFX
+    serial_printPgm(exitStr);
+    serial_println(str);
+#endif
 }
 
 // writes integer i at current cursor position
@@ -932,7 +958,7 @@ void ssd1306_bitmap(const uint8_t bitmap[], uint8_t w, uint8_t h) {
 
 #ifdef CONSOLE_DEBUG
 
-void display() {
+void ssd1306_display() {
     putchar('/');
     for (int i = 0; i < DISPLAY_XSIZE; i++) {
         putchar('-');

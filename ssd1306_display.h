@@ -6,4 +6,23 @@
 
 #define SERIAL_DEBUG
 
+#ifdef SERIAL_DEBUG
+//#define SERIAL_DEBUG_GFX
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern void serial_print(const char *s);
+extern void serial_println(const char *s);
+extern void serial_printPgm(const char *s);
+extern void serial_printPgmln(const char *s);
+extern void serial_printC(char c);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+
 #endif //_SSD1306_DISPLAY_H

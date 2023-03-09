@@ -220,7 +220,7 @@ extern void ssd1306_printDigit(uint8_t dig);
 extern void ssd1306_getTextBounds(PGM_P s, int16_t x, int8_t y, int16_t *pX1, int8_t *pY1, uint8_t *pW, uint8_t *pH);
 
 #ifdef CONSOLE_DEBUG
-extern void display();
+extern void ssd1306_display();
 #endif
 
 #ifdef __cplusplus

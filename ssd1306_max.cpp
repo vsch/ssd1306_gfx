@@ -29,6 +29,26 @@ Ssd1306Display display;
 
 #define NUMFLAKES     10 // Number of snowflakes in the animation example
 
+#ifdef SERIAL_DEBUG
+extern "C" {
+void serial_printC(char c) {
+    Serial.print(c);
+}
+void serial_print(const char *s) {
+    Serial.print(s);
+}
+void serial_println(const char *s) {
+    Serial.println(s);
+}
+void serial_printPgm(PGM_P s) {
+    Serial.print((const __FlashStringHelper *) s);
+}
+void serial_printPgmln(PGM_P s) {
+    Serial.println((const __FlashStringHelper *) s);
+}
+};
+#endif
+
 #define LOGO_HEIGHT   16
 #define LOGO_WIDTH    16
 static const unsigned char PROGMEM logo_bmp[] =
@@ -345,7 +365,9 @@ void testanimate(const uint8_t *bitmap, uint8_t w, uint8_t h) {
 }
 
 void setup() {
-    Serial.begin(9600);
+#ifdef SERIAL_DEBUG
+    Serial.begin(57600);
+#endif
 
     // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0)) {
@@ -353,11 +375,7 @@ void setup() {
         for (;;); // Don't proceed, loop forever
     }
 
-    // Show initial display buffer contents on the screen --
-    // the library initializes this with an Adafruit splash screen.
-    display.display();
-    delay(2000); // Pause for 2 seconds
-
+/*
     // Clear the buffer
     display.clearScreen();
 
@@ -368,11 +386,13 @@ void setup() {
     // drawing commands to make them visible on screen!
     display.display();
     delay(2000);
+*/
     // display.display() is NOT necessary after every single drawing command,
     // unless that's what you want...rather, you can batch up a bunch of
     // drawing operations and then update the screen all at once by calling
     // display.display(). These examples demonstrate both approaches...
 
+/*
     testdrawline();      // Draw many lines
 
     testdrawrect();      // Draw rectangles (outlines)
@@ -386,6 +406,7 @@ void setup() {
     testdrawroundrect(); // Draw rounded rectangles (outlines)
 
     testfillroundrect(); // Draw rounded rectangles (filled)
+*/
 
 /*
     testdrawtriangle();  // Draw triangles (outlines)
@@ -402,6 +423,7 @@ void setup() {
 
     testdrawbitmap();    // Draw a small bitmap image
 */
+/*
 
     // Invert and restore display, pausing in-between
     display.setInverted();
@@ -410,6 +432,7 @@ void setup() {
     delay(1000);
 
     testanimate(logo_bmp, LOGO_WIDTH, LOGO_HEIGHT); // Animate bitmaps
+*/
 }
 
 void loop() {
