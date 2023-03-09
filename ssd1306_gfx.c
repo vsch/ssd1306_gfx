@@ -119,8 +119,9 @@ const uint8_t FONT_CHARS[96][SSD1306_CHAR_X_PIXELS] PROGMEM = {
 };
 
 uint8_t ssd1306_flags;              // option flags
-int8_t ssd1306_cSizeX;              // updated when text size flags change
-int8_t ssd1306_cSizeY;              // updated when text size flags change
+uint8_t ssd1306_textFlags;              // option flags
+uint8_t ssd1306_cSizeX;              // updated when text size flags change
+uint8_t ssd1306_cSizeY;              // updated when text size flags change
 
 int16_t ssd1306_cX;                 // cursor
 int16_t ssd1306_maxX;                // max X value when printing a string and wrapping
@@ -140,7 +141,8 @@ uint8_t ssd1306_dashOffset;          // solid/dash/dot pattern for line outlines
 uint8_t ssd1306_displayBuffer[DISPLAY_YSIZE / 8][DISPLAY_XSIZE];      // display buffer
 
 void ssd1306_clearScreen() {
-    ssd1306_flags = SSD1306_FLAG_TEXT_WRAP;
+    ssd1306_flags = 0;
+    ssd1306_textFlags = SSD1306_TEXT_FLAG_WRAP;
     ssd1306_cSizeX = CHAR_WIDTH;    // updated when text size flags change
     ssd1306_cSizeY = CHAR_HEIGHT;   // updated when text size flags change
     ssd1306_foreColor = SSD1306_COLOR_WHITE;
@@ -570,19 +572,19 @@ void ssd1306_fillEllipse(int cx, int cy, int width, int height, color_t color) {
 // So, character width = 6 pixels & character height = 8 pixels. //
 
 void ssd1306_updateCharSize() {
-    ssd1306_cSizeY = ssd1306_flags & SSD1306_FLAG_TEXT_DOUBLE_HEIGHT ? CHAR_HEIGHT * 2 : CHAR_HEIGHT;
-    ssd1306_cSizeX = ssd1306_flags & SSD1306_FLAG_TEXT_DOUBLE_WIDTH ? CHAR_WIDTH * 2 : CHAR_WIDTH;
+    ssd1306_cSizeY = ssd1306_textFlags & SSD1306_TEXT_FLAG_DOUBLE_HEIGHT ? CHAR_HEIGHT * 2 : CHAR_HEIGHT;
+    ssd1306_cSizeX = ssd1306_textFlags & SSD1306_TEXT_FLAG_DOUBLE_WIDTH ? CHAR_WIDTH * 2 : CHAR_WIDTH;
 }
 
 void ssd1306_setTextFlags(uint8_t flags) {
-    ssd1306_flags &= ~(SSD1306_FLAG_TEXT_DOUBLE_SIZE | SSD1306_FLAG_BORDER_TEXT_CHAR | SSD1306_FLAG_TEXT_BORDER | SSD1306_FLAG_BORDER_TEXT_LINE);
+    ssd1306_textFlags &= ~(SSD1306_TEXT_FLAG_DOUBLE_SIZE | SSD1306_TEXT_FLAG_BORDER_CHAR | SSD1306_TEXT_FLAG_BORDER | SSD1306_TEXT_FLAG_BORDER_LINE);
 
-    ssd1306_flags |= flags & SSD1306_FLAG_TEXT_DOUBLE_SIZE;
-    ssd1306_cSizeX = (flags & SSD1306_FLAG_TEXT_DOUBLE_WIDTH) ? CHAR_WIDTH * 2 : CHAR_WIDTH;
-    ssd1306_cSizeY = (flags & SSD1306_FLAG_TEXT_DOUBLE_HEIGHT) ? CHAR_HEIGHT * 2 : CHAR_HEIGHT;
+    ssd1306_textFlags |= flags & SSD1306_TEXT_FLAG_DOUBLE_SIZE;
+    ssd1306_cSizeX = (flags & SSD1306_TEXT_FLAG_DOUBLE_WIDTH) ? CHAR_WIDTH * 2 : CHAR_WIDTH;
+    ssd1306_cSizeY = (flags & SSD1306_TEXT_FLAG_DOUBLE_HEIGHT) ? CHAR_HEIGHT * 2 : CHAR_HEIGHT;
 
-    if (flags & SSD1306_FLAG_TEXT_BORDER) {
-        ssd1306_flags |= SSD1306_FLAG_BORDER_TEXT_CHAR | SSD1306_FLAG_TEXT_BORDER | SSD1306_FLAG_BORDER_TEXT_LINE;
+    if (flags & SSD1306_TEXT_FLAG_BORDER) {
+        ssd1306_textFlags |= SSD1306_TEXT_FLAG_BORDER_CHAR | SSD1306_TEXT_FLAG_BORDER | SSD1306_TEXT_FLAG_BORDER_LINE;
     }
 }
 
@@ -601,10 +603,10 @@ bool ssd1306_isCharClipped() {
 }
 
 void ssd1306_newLine() {
-    ssd1306_flags &= ~SSD1306_FLAG_BORDER_TEXT_LINE;
+    ssd1306_textFlags &= ~SSD1306_TEXT_FLAG_BORDER_LINE;
 
-    if (ssd1306_flags & SSD1306_FLAG_TEXT_BORDER) {
-        ssd1306_flags |= SSD1306_FLAG_BORDER_TEXT_CHAR;
+    if (ssd1306_textFlags & SSD1306_TEXT_FLAG_BORDER) {
+        ssd1306_textFlags |= SSD1306_TEXT_FLAG_BORDER_CHAR;
     }
 
     ssd1306_cX = ssd1306_marginLeft;
@@ -618,62 +620,64 @@ void ssd1306_newLine() {
 bool ssd1306_putCh(char ch) {
     if (ch == '\n') {
         // go to next line and left margin
-        ssd1306_flags &= ~SSD1306_FLAG_TEXT_WRAPPED;
+        ssd1306_textFlags &= ~SSD1306_TEXT_FLAG_WRAPPED;
         ssd1306_newLine();
         return false;
     } else if (ch >= 32 && ssd1306_isCharVisible() && (ssd1306_foreColor != SSD1306_COLOR_NONE || ssd1306_backColor != SSD1306_COLOR_NONE)) {
-        uint8_t charBits[5];
-        *((uint32_t *) (charBits)) = pgm_read_dword((const char *) FONT_CHARS[ch - 32]);
-        charBits[4] = pgm_read_byte((const char *) FONT_CHARS[ch - 32] + 4);
-        uint8_t row, col, data, mask;
+        if (!(ssd1306_flags & SSD1306_FLAG_SIMULATED_PRINT)) {
+            uint8_t charBits[5];
+            *((uint32_t *) (charBits)) = pgm_read_dword((const char *) FONT_CHARS[ch - 32]);
+            charBits[4] = pgm_read_byte((const char *) FONT_CHARS[ch - 32] + 4);
+            uint8_t row, col, data, mask;
 
-        for (row = 0, mask = 0x01; row < SSD1306_CHAR_Y_PIXELS; row++, mask <<= 1) {
-            for (col = 0; col < SSD1306_CHAR_X_PIXELS; col++) {
-                data = *(charBits + col);
-                color_t color = (data & mask) ? ssd1306_foreColor : ssd1306_backColor;
-                uint8_t col2 = 2 * col;
-                int row2 = 2 * row;
+            for (row = 0, mask = 0x01; row < SSD1306_CHAR_Y_PIXELS; row++, mask <<= 1) {
+                for (col = 0; col < SSD1306_CHAR_X_PIXELS; col++) {
+                    data = *(charBits + col);
+                    color_t color = (data & mask) ? ssd1306_foreColor : ssd1306_backColor;
+                    uint8_t col2 = 2 * col;
+                    int row2 = 2 * row;
 
-                switch (ssd1306_flags & SSD1306_FLAG_TEXT_DOUBLE_SIZE) {
-                    case SSD1306_FLAG_TEXT_DOUBLE_HEIGHT:
-                        ssd1306_setPixel(ssd1306_cX + col, ssd1306_cY + row2, color);
-                        ssd1306_setPixel(ssd1306_cX + col, ssd1306_cY + row2 + 1, color);
-                        break;
-                    case SSD1306_FLAG_TEXT_DOUBLE_WIDTH:
-                        ssd1306_setPixel(ssd1306_cX + col2, ssd1306_cY + row, color);
-                        ssd1306_setPixel(ssd1306_cX + col2 + 1, ssd1306_cY + row, color);
-                        break;
-                    case SSD1306_FLAG_TEXT_DOUBLE_SIZE:
-                        ssd1306_setPixel(ssd1306_cX + col2, ssd1306_cY + row2, color);
-                        ssd1306_setPixel(ssd1306_cX + col2 + 1, ssd1306_cY + row2, color);
-                        ssd1306_setPixel(ssd1306_cX + col2, ssd1306_cY + row2 + 1, color);
-                        ssd1306_setPixel(ssd1306_cX + col2 + 1, ssd1306_cY + row2 + 1, color);
-                        break;
-                    default:
-                        ssd1306_setPixel((int16_t) (ssd1306_cX + col), (int8_t) (ssd1306_cY + row), color);
-                        break;
-                }
-
-                // FIX: these overlap between lines, issue if using invert
-                if (ssd1306_backColor != SSD1306_COLOR_NONE) {
-                    if (ssd1306_flags & SSD1306_FLAG_BORDER_TEXT_CHAR) {
-                        // add left border
-                        ssd1306_vLine(ssd1306_cX - 1, ssd1306_cY - 1, ssd1306_cY + ssd1306_cSizeY - 1, ssd1306_backColor);
-                        ssd1306_flags &= ~SSD1306_FLAG_BORDER_TEXT_CHAR;
+                    switch (ssd1306_textFlags & SSD1306_TEXT_FLAG_DOUBLE_SIZE) {
+                        case SSD1306_TEXT_FLAG_DOUBLE_HEIGHT:
+                            ssd1306_setPixel(ssd1306_cX + col, ssd1306_cY + row2, color);
+                            ssd1306_setPixel(ssd1306_cX + col, ssd1306_cY + row2 + 1, color);
+                            break;
+                        case SSD1306_TEXT_FLAG_DOUBLE_WIDTH:
+                            ssd1306_setPixel(ssd1306_cX + col2, ssd1306_cY + row, color);
+                            ssd1306_setPixel(ssd1306_cX + col2 + 1, ssd1306_cY + row, color);
+                            break;
+                        case SSD1306_TEXT_FLAG_DOUBLE_SIZE:
+                            ssd1306_setPixel(ssd1306_cX + col2, ssd1306_cY + row2, color);
+                            ssd1306_setPixel(ssd1306_cX + col2 + 1, ssd1306_cY + row2, color);
+                            ssd1306_setPixel(ssd1306_cX + col2, ssd1306_cY + row2 + 1, color);
+                            ssd1306_setPixel(ssd1306_cX + col2 + 1, ssd1306_cY + row2 + 1, color);
+                            break;
+                        default:
+                            ssd1306_setPixel((int16_t) (ssd1306_cX + col), (int8_t) (ssd1306_cY + row), color);
+                            break;
                     }
 
-                    if (ssd1306_flags & SSD1306_FLAG_BORDER_TEXT_LINE) {
-                        // add top border
-                        ssd1306_hLine(ssd1306_cX, ssd1306_cY - 1, ssd1306_cX + ssd1306_cSizeX - 1, ssd1306_backColor);
+                    // FIX: these overlap between lines, issue if using invert
+                    if (ssd1306_backColor != SSD1306_COLOR_NONE) {
+                        if (ssd1306_textFlags & SSD1306_TEXT_FLAG_BORDER_CHAR) {
+                            // add left border
+                            ssd1306_vLine(ssd1306_cX - 1, ssd1306_cY - 1, ssd1306_cY + ssd1306_cSizeY - 1, ssd1306_backColor);
+                            ssd1306_textFlags &= ~SSD1306_TEXT_FLAG_BORDER_CHAR;
+                        }
+
+                        if (ssd1306_textFlags & SSD1306_TEXT_FLAG_BORDER_LINE) {
+                            // add top border
+                            ssd1306_hLine(ssd1306_cX, ssd1306_cY - 1, ssd1306_cX + ssd1306_cSizeX - 1, ssd1306_backColor);
+                        }
                     }
                 }
             }
-        }
 
-        // add bottom and right borders always
-        // FIX: these overlap between lines, issue if using invert
-        ssd1306_hLine(ssd1306_cX, ssd1306_cY + ssd1306_cSizeY - 1, ssd1306_cX + ssd1306_cSizeX - 1, ssd1306_backColor);
-        ssd1306_vLine(ssd1306_cX + ssd1306_cSizeX - 1, ssd1306_cY, ssd1306_cY + ssd1306_cSizeY - 2, ssd1306_backColor);
+            // add bottom and right borders always
+            // FIX: these overlap between lines, issue if using invert
+            ssd1306_hLine(ssd1306_cX, ssd1306_cY + ssd1306_cSizeY - 1, ssd1306_cX + ssd1306_cSizeX - 1, ssd1306_backColor);
+            ssd1306_vLine(ssd1306_cX + ssd1306_cSizeX - 1, ssd1306_cY, ssd1306_cY + ssd1306_cSizeY - 2, ssd1306_backColor);
+        }
         return true;
     }
     return false;
@@ -681,19 +685,19 @@ bool ssd1306_putCh(char ch) {
 
 // writes character to display at current cursor position.
 void ssd1306_printChar(char ch) {
-    if (ssd1306_flags & SSD1306_FLAG_TEXT_WRAP) {
+    if (ssd1306_textFlags & SSD1306_TEXT_FLAG_WRAP) {
         if (ssd1306_cX + ssd1306_cSizeX > ssd1306_marginRight) {
             // wrap text
-            ssd1306_flags |= SSD1306_FLAG_TEXT_WRAPPED;
+            ssd1306_textFlags |= SSD1306_TEXT_FLAG_WRAPPED;
             ssd1306_newLine();
         }
 
-        if (ch != ' ' || !(ssd1306_flags & SSD1306_FLAG_TEXT_WRAPPED)) {
+        if (ch != ' ' || !(ssd1306_textFlags & SSD1306_TEXT_FLAG_WRAPPED)) {
             if (ssd1306_putCh(ch)) {
 #ifdef SERIAL_DEBUG_GFX
                 serial_printC(ch);
 #endif
-                ssd1306_flags &= ~SSD1306_FLAG_TEXT_WRAPPED;
+                ssd1306_textFlags &= ~SSD1306_TEXT_FLAG_WRAPPED;
                 ssd1306_cX += ssd1306_cSizeX;
                 if (ssd1306_maxX < ssd1306_cX) ssd1306_maxX = ssd1306_cX;
                 if (ssd1306_maxY < ssd1306_cY + ssd1306_cSizeY) ssd1306_maxY = ssd1306_cY + ssd1306_cSizeY;
@@ -838,7 +842,7 @@ void ssd1306_printNumber(uint32_t n, uint8_t radix, uint8_t pad, char ch, char i
         uint8_t c = n % radix;
         n /= radix;
 
-        *--str = (char)(c < 10 ? c + '0' : c + 'A' - 10);
+        *--str = (char) (c < 10 ? c + '0' : c + 'A' - 10);
     } while (n);
 
     uint8_t len = &buf[sizeof(buf) - 1] - str;
@@ -859,6 +863,7 @@ void ssd1306_printNumber(uint32_t n, uint8_t radix, uint8_t pad, char ch, char i
 
 // writes integer i at current cursor position
 void ssd1306_printInt32(int32_t i) {
+    ssd1306_printInt32Pad(i, 0, 0, 0);
 }
 
 void ssd1306_printInt32Pad(int32_t n, uint8_t radix, uint8_t pad, char ch) {
@@ -929,15 +934,21 @@ void ssd1306_printDigit(uint8_t dig) {
     ssd1306_printChar(c);
 }
 
-void ssd1306_getTextBounds(const PGM_P s, int16_t x, int8_t y, int16_t *pX1, int8_t *pY1, uint8_t *pW, uint8_t *pH) {
+void ssd1306_getTextBounds(const PGM_P s, int16_t x, int8_t y, int16_t *pX0, int8_t *pY0, uint8_t *pW, uint8_t *pH) {
     int16_t sx = ssd1306_cX;
     int8_t sy = ssd1306_cY;
-    ssd1306_printPgmText(s);
 
-    if (pX1 != NULL) *pX1 = ssd1306_cX;
-    if (pY1 != NULL) *pY1 = ssd1306_cY;
+    ssd1306_flags |= SSD1306_FLAG_SIMULATED_PRINT;
+    ssd1306_printPgmText(s);
+    ssd1306_cX = sx;
+    ssd1306_cY = sy;
+
+    if (pX0 != NULL) *pX0 = ssd1306_cX;
+    if (pY0 != NULL) *pY0 = ssd1306_cY;
     if (pW != NULL) *pW = ssd1306_maxX - sx;
     if (pH != NULL) *pH = ssd1306_maxY - sy;
+
+    ssd1306_flags &= ~SSD1306_FLAG_SIMULATED_PRINT;
 }
 
 void ssd1306_bitmap(const uint8_t bitmap[], uint8_t w, uint8_t h) {

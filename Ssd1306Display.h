@@ -47,11 +47,14 @@ public:
         return true;
     }
 
-    inline void setTextColor(uint16_t c) { ssd1306_foreColor = c; ssd1306_backColor = SSD1306_COLOR_NONE; }
+    inline void setTextColor(uint16_t c) {
+        ssd1306_foreColor = c;
+        ssd1306_backColor = SSD1306_COLOR_NONE;
+    }
 
     inline void setTextSize(uint8_t s) {
         if (s == 2) {
-            ssd1306_setTextFlags(SSD1306_FLAG_TEXT_DOUBLE_SIZE);
+            ssd1306_setTextFlags(SSD1306_TEXT_FLAG_DOUBLE_SIZE);
         } else {
             ssd1306_setTextFlags(0);
         }
@@ -120,17 +123,17 @@ public:
     inline int8_t getCursorY(void) { return ssd1306_cY; };
 
     // FIX: needs work
-    inline void getTextBounds(PGM_P s, int16_t x, int16_t y, int16_t *pX1, int16_t *pY1, uint16_t *pW, uint16_t *pH) {
-        int8_t sy1;
+    inline void getTextBounds(const __FlashStringHelper *s, int16_t x, int16_t y, int16_t *pX0, int16_t *pY0, uint16_t *pW, uint16_t *pH) {
+        int8_t sy0;
         uint8_t sh, sw;
-        ssd1306_getTextBounds(s, x, (int8_t) y, pX1, &sy1, &sw, &sh);
-        if (pY1 != NULL) *pY1 = sy1;
+        ssd1306_getTextBounds((PGM_P) s, x, (int8_t) y, pX0, &sy0, &sw, &sh);
+        if (pY0 != NULL) *pY0 = sy0;
         if (pW != NULL) *pW = sw;
         if (pH != NULL) *pH = sh;
     }
 
-    inline void getTextBounds(const __FlashStringHelper *s, int16_t x, int8_t y, int16_t *x1, int8_t *y1, uint8_t *w, uint8_t *h) {
-        ssd1306_getTextBounds((PGM_P) s, x, y, x1, y1, w, h);
+    inline void getTextBounds(const __FlashStringHelper *s, int16_t x, int8_t y, int16_t *x0, int8_t *y0, uint8_t *w, uint8_t *h) {
+        ssd1306_getTextBounds((PGM_P) s, x, y, x0, y0, w, h);
     }
 
 

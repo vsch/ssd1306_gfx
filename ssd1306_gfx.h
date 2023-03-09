@@ -49,7 +49,7 @@ typedef uint8_t color_t;
 #define SSD1306_COLOR_INVERT    2  // invert
 #define SSD1306_COLOR_NONE      3  // leave as is
 
-#define SSD1306_FLAG_TEXT_DOUBLE_SIZE (SSD1306_FLAG_TEXT_DOUBLE_WIDTH | SSD1306_FLAG_TEXT_DOUBLE_HEIGHT)
+#define SSD1306_TEXT_FLAG_DOUBLE_SIZE (SSD1306_TEXT_FLAG_DOUBLE_WIDTH | SSD1306_TEXT_FLAG_DOUBLE_HEIGHT)
 
 #define SSD1306_BITS_DASH_NONE           0b1
 #define SSD1306_SIZE_DASH_NONE           1
@@ -117,14 +117,16 @@ typedef uint8_t color_t;
 
 // display flags
 #define SSD1306_FLAG_NONE  0
-#define SSD1306_FLAG_TEXT_BORDER                0x01  // add left and top text borders in background color
-#define SSD1306_FLAG_TEXT_DOUBLE_WIDTH          0x02
-#define SSD1306_FLAG_TEXT_DOUBLE_HEIGHT         0x04
-#define SSD1306_FLAG_TEXT_WRAP                  0x08
-#define SSD1306_FLAG_TEXT_WRAPPED               0x10  // text was wrapped, so now we skip spaces until non-space appears
-#define SSD1306_FLAG_CONTINUED_PATH             0x20  // cursor position represents a filled pixel that start of lineTo should not draw
-#define SSD1306_FLAG_BORDER_TEXT_LINE           0x40  // set when char needs top border because it is the first line of text
-#define SSD1306_FLAG_BORDER_TEXT_CHAR           0x80  // set when char needs left border because it is first in line
+#define SSD1306_FLAG_CONTINUED_PATH             0x01  // cursor position represents a filled pixel that start of lineTo should not draw
+#define SSD1306_FLAG_SIMULATED_PRINT            0x02  // cursor position represents a filled pixel that start of lineTo should not draw
+
+#define SSD1306_TEXT_FLAG_BORDER                0x01  // add left and top text borders in background color
+#define SSD1306_TEXT_FLAG_DOUBLE_WIDTH          0x02
+#define SSD1306_TEXT_FLAG_DOUBLE_HEIGHT         0x04
+#define SSD1306_TEXT_FLAG_WRAP                  0x08
+#define SSD1306_TEXT_FLAG_WRAPPED               0x10  // text was wrapped, so now we skip spaces until non-space appears
+#define SSD1306_TEXT_FLAG_BORDER_LINE           0x20  // set when char needs top border because it is the first line of text
+#define SSD1306_TEXT_FLAG_BORDER_CHAR           0x40  // set when char needs left border because it is first in line
 
 #ifdef __cplusplus
 extern "C" {
@@ -132,8 +134,9 @@ extern "C" {
 
 // graphics functions/variables
 extern uint8_t ssd1306_flags;           // option flags
-extern int8_t ssd1306_cSizeX;          // char width updated when text size flags change
-extern int8_t ssd1306_cSizeY;          // char height updated when text size flags change
+extern uint8_t ssd1306_textFlags;           // option flags
+extern uint8_t ssd1306_cSizeX;          // char width updated when text size flags change
+extern uint8_t ssd1306_cSizeY;          // char height updated when text size flags change
 
 extern int16_t ssd1306_cX; // cursor
 extern int16_t ssd1306_maxX; // max X value when printing a string and wrapping
@@ -217,7 +220,7 @@ extern void ssd1306_printUInt8(uint8_t i);
 extern void ssd1306_printUInt8Pad(uint8_t i, uint8_t radix, uint8_t pad, char ch);
 extern void ssd1306_printDigit(uint8_t dig);
 
-extern void ssd1306_getTextBounds(PGM_P s, int16_t x, int8_t y, int16_t *pX1, int8_t *pY1, uint8_t *pW, uint8_t *pH);
+extern void ssd1306_getTextBounds(PGM_P const s, int16_t x, int8_t y, int16_t *pX0, int8_t *pY0, uint8_t *pW, uint8_t *pH);
 
 #ifdef CONSOLE_DEBUG
 extern void ssd1306_display();
