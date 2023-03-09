@@ -109,6 +109,13 @@ public:
 
     inline static void drawPixel(int16_t x, int16_t y, color_t color) { ssd1306_setPixel(x, y, color); }
 
+    inline static void drawBitmap(int16_t x, int16_t y, const uint8_t bitmap[], int16_t w, int16_t h, uint16_t color) {
+        setCursor(x, y);
+        setForeColor(color);
+        setBackColor(SSD1306_COLOR_NONE);
+        ssd1306_bitmap(bitmap, w, h);
+    }
+
     inline static int16_t getCursorX(void) { return ssd1306_cX; };
 
     inline static int8_t getCursorY(void) { return ssd1306_cY; };

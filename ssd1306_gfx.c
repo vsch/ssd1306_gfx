@@ -890,7 +890,7 @@ void ssd1306_printInt8(int8_t i) {
 }
 
 void ssd1306_printUInt8(uint8_t i) {
-    ssd1306_printNumber(i, 10, 0, 0,0);
+    ssd1306_printNumber(i, 10, 0, 0, 0);
 }
 
 void ssd1306_printUInt8Pad(uint8_t i, uint8_t radix, uint8_t pad, char ch) {
@@ -912,6 +912,22 @@ void ssd1306_getTextBounds(const PGM_P s, int16_t x, int8_t y, int16_t *pX1, int
     if (pY1 != NULL) *pY1 = ssd1306_cY;
     if (pW != NULL) *pW = ssd1306_maxX - sx;
     if (pH != NULL) *pH = ssd1306_maxY - sy;
+}
+
+void ssd1306_bitmap(const uint8_t bitmap[], uint8_t w, uint8_t h) {
+    int16_t y = ssd1306_cY;
+
+    int16_t byteWidth = (w + 7) / 8; // Bitmap scanline pad = whole byte
+    uint8_t byte = 0;
+
+    for (int16_t j = 0; j < h; j++, y++) {
+        for (int16_t i = 0; i < w; i++) {
+            if (i & 7) byte <<= 1;
+            else byte = pgm_read_byte(&bitmap[j * byteWidth + i / 8]);
+
+            ssd1306_setPixel(ssd1306_cX + i, y, (byte & 0x80) ? ssd1306_foreColor : ssd1306_backColor);
+        }
+    }
 }
 
 #ifdef CONSOLE_DEBUG

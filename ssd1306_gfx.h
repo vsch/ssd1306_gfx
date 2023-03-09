@@ -180,6 +180,8 @@ extern void ssd1306_rect(int16_t x1, int8_t y1);   // draw rectangle outline in 
 extern void ssd1306_circle(int8_t radius);         // draw circle centered on cursor, outline in foreground, fill in background
 extern void ssd1306_roundRect(int16_t x1, int8_t y1, int8_t r, uint8_t octs);   // draw rounded rectangle outline in foreground, fill in background
 
+extern void ssd1306_bitmap(const uint8_t bitmap[], uint8_t w, uint8_t h);
+
 #ifdef SSD1306_FANCY
 extern void ssd1306_ellipse(int8_t width, int8_t height);         // draw ellipse centered on cursor, outline in foreground, fill in background
 #endif

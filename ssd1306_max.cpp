@@ -303,7 +303,6 @@ void testdrawbitmap(void) {
 #define YPOS   1
 #define DELTAY 2
 
-/*
 void testanimate(const uint8_t *bitmap, uint8_t w, uint8_t h) {
     int8_t f, icons[NUMFLAKES][3];
 
@@ -321,7 +320,7 @@ void testanimate(const uint8_t *bitmap, uint8_t w, uint8_t h) {
     }
 
     for (;;) { // Loop forever...
-        display.clearDisplay(); // Clear the display buffer
+        display.clearScreen(); // Clear the display buffer
 
         // Draw each snowflake:
         for (f = 0; f < NUMFLAKES; f++) {
@@ -344,7 +343,6 @@ void testanimate(const uint8_t *bitmap, uint8_t w, uint8_t h) {
         }
     }
 }
-*/
 
 void setup() {
     Serial.begin(9600);
@@ -411,7 +409,7 @@ void setup() {
     display.clearInverted();
     delay(1000);
 
-//    testanimate(logo_bmp, LOGO_WIDTH, LOGO_HEIGHT); // Animate bitmaps
+    testanimate(logo_bmp, LOGO_WIDTH, LOGO_HEIGHT); // Animate bitmaps
 }
 
 void loop() {
