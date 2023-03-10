@@ -1,12 +1,10 @@
 cmake_minimum_required(VERSION 2.8.4)
 set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/cmake/ArduinoToolchain.cmake)
 set(CMAKE_CXX_STANDARD 98)
-
 set(PROJECT_NAME ssd1306)
-set(${CMAKE_PROJECT_NAME}_BOARD pro)
+set(${PROJECT_NAME}_BOARD pro)
 set(ARDUINO_CPU 8MHzatmega328)
-
-project(${PROJECT_NAME})
+project(${PROJECT_NAME} C CXX)
 
 # Define the source code for cpp files or default arduino sketch files
 set(${PROJECT_NAME}_SRCS ssd1306_test.cpp.bak ssd1306.c ssd1306_gfx.c ssd1306_max.cpp twi.c)
