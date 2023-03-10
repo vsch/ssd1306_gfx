@@ -4,6 +4,8 @@
 #define SSD1306_OLED_TYPE 91
 #define SSD1306_CONFIG_FLAGS SSD1306_SWITCHCAPVCC
 
+#define noexcept
+
 #define SERIAL_DEBUG
 
 #ifdef SERIAL_DEBUG
