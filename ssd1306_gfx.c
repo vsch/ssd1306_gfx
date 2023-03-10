@@ -576,7 +576,7 @@ void ssd1306_updateCharSize() {
     ssd1306_cSizeX = ssd1306_textFlags & SSD1306_TEXT_FLAG_DOUBLE_WIDTH ? CHAR_WIDTH * 2 : CHAR_WIDTH;
 }
 
-void ssd1306_setTextFlags(uint8_t flags) {
+void ssd1306_setTextSizeFlags(uint8_t flags) {
     ssd1306_textFlags &= ~(SSD1306_TEXT_FLAG_DOUBLE_SIZE | SSD1306_TEXT_FLAG_BORDER_CHAR | SSD1306_TEXT_FLAG_BORDER | SSD1306_TEXT_FLAG_BORDER_LINE);
 
     ssd1306_textFlags |= flags & SSD1306_TEXT_FLAG_DOUBLE_SIZE;
@@ -734,8 +734,8 @@ void ssd1306_printPgmText(PGM_P str) {
 
 // writes string to display at current cursor position.
 uint8_t ssd1306_printTextChars(const char *str, uint8_t count) {
-    ssd1306_maxX = ssd1306_cX;
-    ssd1306_maxY = ssd1306_cY;
+    ssd1306_maxX = -1;
+    ssd1306_maxY = -1;
     for (; *str && count; str++, count--) {
         ssd1306_printChar(*str);
     }
@@ -743,8 +743,8 @@ uint8_t ssd1306_printTextChars(const char *str, uint8_t count) {
 }
 
 uint8_t ssd1306_printPgmTextChars(PGM_P str, uint8_t count) {
-    ssd1306_maxX = ssd1306_cX;
-    ssd1306_maxY = ssd1306_cY;
+    ssd1306_maxX = -1;
+    ssd1306_maxY = -1;
     PGM_P p = (PGM_P) (str);
     for (; count; p++, count--) {
         char c = pgm_read_byte(p);
@@ -755,8 +755,8 @@ uint8_t ssd1306_printPgmTextChars(PGM_P str, uint8_t count) {
 }
 
 void ssd1306_printTextLeftPad(PGM_P str, char ch, uint8_t pad) {
-    ssd1306_maxX = ssd1306_cX;
-    ssd1306_maxY = ssd1306_cY;
+    ssd1306_maxX = -1;
+    ssd1306_maxY = -1;
     if (pad) {
         uint8_t len = strlen(str);
         if (pad > len) {
@@ -767,8 +767,8 @@ void ssd1306_printTextLeftPad(PGM_P str, char ch, uint8_t pad) {
 }
 
 void ssd1306_printPgmTextLeftPad(const char *str, char ch, uint8_t pad) {
-    ssd1306_maxX = ssd1306_cX;
-    ssd1306_maxY = ssd1306_cY;
+    ssd1306_maxX = -1;
+    ssd1306_maxY = -1;
     if (pad) {
         uint8_t len = 0;
         PGM_P p = str;
@@ -936,7 +936,7 @@ void ssd1306_printDigit(uint8_t dig) {
     ssd1306_printChar(c);
 }
 
-void ssd1306_getTextBounds(const PGM_P s, int16_t x, int8_t y, int16_t *pX0, int8_t *pY0, uint8_t *pW, uint8_t *pH) {
+void ssd1306_getTextBounds(const char *s, int16_t *pX0, int8_t *pY0, uint8_t *pW, uint8_t *pH) {
     int16_t sx = ssd1306_cX;
     int8_t sy = ssd1306_cY;
 

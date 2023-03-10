@@ -190,7 +190,7 @@ extern void ssd1306_ellipse(int8_t width, int8_t height);         // draw ellips
 #endif
 
 extern void ssd1306_updateCharSize();
-extern void ssd1306_setTextFlags(uint8_t flags); // double wide and/or double height
+extern void ssd1306_setTextSizeFlags(uint8_t flags); // double wide and/or double height
 extern void ssd1306_setTextColRow(int8_t x, int8_t y);
 extern bool ssd1306_isCharVisible();
 extern bool ssd1306_isCharClipped();
@@ -220,7 +220,7 @@ extern void ssd1306_printUInt8(uint8_t i);
 extern void ssd1306_printUInt8Pad(uint8_t i, uint8_t radix, uint8_t pad, char ch);
 extern void ssd1306_printDigit(uint8_t dig);
 
-extern void ssd1306_getTextBounds(PGM_P const s, int16_t x, int8_t y, int16_t *pX0, int8_t *pY0, uint8_t *pW, uint8_t *pH);
+extern void ssd1306_getTextBounds(const char *s, int16_t *pX0, int8_t *pY0, uint8_t *pW, uint8_t *pH);
 
 #ifdef CONSOLE_DEBUG
 extern void ssd1306_display();

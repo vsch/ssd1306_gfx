@@ -242,8 +242,8 @@ void testdrawchar(void) {
     display.clearScreen();
 
     display.setTextSize(1);      // Normal 1:1 pixel scale
-    display.setTextColor(SSD1306_WHITE); // Draw white text
-    display.setCursor(0, 0);     // Start at top-left corner
+    display.setForeColor(SSD1306_WHITE); // Draw white text
+    display.moveTo(0, 0);     // Start at top-left corner
 //    display.cp437(true);         // Use full 256 char 'Code Page 437' font
 
     // Not all the characters will fit on the display. This is normal.
@@ -261,15 +261,15 @@ void testdrawstyles(void) {
     display.clearScreen();
 
     display.setTextSize(1);             // Normal 1:1 pixel scale
-    display.setTextColor(SSD1306_WHITE);        // Draw white text
-    display.setCursor(0, 0);             // Start at top-left corner
+    display.setForeColor(SSD1306_WHITE);        // Draw white text
+    display.moveTo(0, 0);             // Start at top-left corner
     display.println(F("Hello, world!"));
 
-    display.setTextColor(SSD1306_BLACK, SSD1306_WHITE); // Draw 'inverse' text
+    display.setColors(SSD1306_BLACK, SSD1306_WHITE); // Draw 'inverse' text
     display.println(3.141592);
 
     display.setTextSize(2);             // Draw 2X-scale text
-    display.setTextColor(SSD1306_WHITE);
+    display.setForeColor(SSD1306_WHITE);
     display.print(F("0x"));
     display.println(0xDEADBEEF, HEX);
 
@@ -282,8 +282,8 @@ void testscrolltext(void) {
     display.clearDisplay();
 
     display.setTextSize(2); // Draw 2X-scale text
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(10, 0);
+    display.setColors(SSD1306_WHITE);
+    display.moveTo(10, 0);
     display.println(F("scroll"));
     display.display();      // Show initial text
     delay(100);

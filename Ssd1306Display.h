@@ -54,9 +54,9 @@ public:
 
     inline void setTextSize(uint8_t s) {
         if (s == 2) {
-            ssd1306_setTextFlags(SSD1306_TEXT_FLAG_DOUBLE_SIZE);
+            ssd1306_setTextSizeFlags(SSD1306_TEXT_FLAG_DOUBLE_SIZE);
         } else {
-            ssd1306_setTextFlags(0);
+            ssd1306_setTextSizeFlags(0);
         }
     }
 
@@ -126,14 +126,21 @@ public:
     inline void getTextBounds(const __FlashStringHelper *s, int16_t x, int16_t y, int16_t *pX0, int16_t *pY0, uint16_t *pW, uint16_t *pH) {
         int8_t sy0;
         uint8_t sh, sw;
-        ssd1306_getTextBounds((PGM_P) s, x, (int8_t) y, pX0, &sy0, &sw, &sh);
+        int16_t sx = ssd1306_cX;
+        int8_t sy = ssd1306_cY;
+
+        ssd1306_cX = x;
+        ssd1306_cY = y;
+        ssd1306_getTextBounds((PGM_P) s, pX0, &sy0, &sw, &sh);
+        ssd1306_cX = sx;
+        ssd1306_cY = sy;
         if (pY0 != NULL) *pY0 = sy0;
         if (pW != NULL) *pW = sw;
         if (pH != NULL) *pH = sh;
     }
 
-    inline void getTextBounds(const __FlashStringHelper *s, int16_t x, int8_t y, int16_t *x0, int8_t *y0, uint8_t *w, uint8_t *h) {
-        ssd1306_getTextBounds((PGM_P) s, x, y, x0, y0, w, h);
+    inline void getTextBounds(const __FlashStringHelper *s, int16_t *pX0, int8_t *pY0, uint8_t *pW, uint8_t *pH) {
+        ssd1306_getTextBounds((PGM_P) s, pX0, pY0, pW, pH);
     }
 
 
@@ -216,6 +223,16 @@ public:
         ssd1306_flags &= ~SSD1306_FLAG_CONTINUED_PATH;
     }
 
+    inline void moveXBy(int16_t x) {
+        ssd1306_cX += x;
+        ssd1306_flags &= ~SSD1306_FLAG_CONTINUED_PATH;
+    }
+
+    inline void moveYBy(int8_t y) {
+        ssd1306_cY += y;
+        ssd1306_flags &= ~SSD1306_FLAG_CONTINUED_PATH;
+    }
+
     // @formatter:off
     inline void drawCircleOctants(int16_t cx, int8_t cy, int16_t x, int8_t y, uint8_t octs) { ssd1306_drawCircleOctants(cx, cy, x, y, octs); }
     inline void fillCircleOctants(int16_t cx, int8_t cy, int16_t x, int8_t y, uint8_t octs) { ssd1306_fillCircleOctants(cx, cy, x, y, octs); }
@@ -230,9 +247,45 @@ public:
     inline void roundRect(int16_t x1, int8_t y1, int8_t r, uint8_t octs) { ssd1306_roundRect(x1, y1, r, octs); }
     // @formatter:on
 
+    inline void doubleLineTo(int16_t x1, int8_t y1, int8_t xSpc, int8_t ySpc) {
+        int16_t x0 = getX();
+        int8_t y0 = getY();
+
+        lineTo(x1, y1);
+        moveBy(xSpc, ySpc);
+        lineTo(x0 + xSpc, y0 + ySpc);
+        moveTo(x0, y0);
+    }
+
+    inline void doubleHLineTo(int16_t x1, int8_t ySpc) {
+        int16_t x0 = getX();
+        int8_t y0 = getY();
+
+        hLineTo(x1);
+        moveYBy(ySpc);
+        hLineTo(x0);
+        moveTo(x0, y0);
+    }
+
+    inline void doubleVLineTo(int16_t y1, int8_t xSpc) {
+        int16_t x0 = getX();
+        int8_t y0 = getY();
+
+        vLineTo(y1);
+        moveXBy(xSpc);
+        vLineTo(y0);
+        moveTo(x0, y0);
+    }
+
+
     // text functions
     // @formatter:off
-    inline void setTextFlags(uint8_t flags) { ssd1306_setTextFlags(flags); }
+    inline void setTextSizeFlags(uint8_t flags) { ssd1306_setTextSizeFlags(flags); }
+
+    inline void setDrawTextBorder() { ssd1306_textFlags |= SSD1306_TEXT_FLAG_BORDER; }
+    inline void clearDrawTextBorder() { ssd1306_textFlags &= ~SSD1306_TEXT_FLAG_BORDER; }
+    inline bool isDrawTextBorder() { return (ssd1306_textFlags & SSD1306_TEXT_FLAG_BORDER); }
+
     inline bool isCharVisible() { return ssd1306_isCharVisible(); }
     inline bool isCharClipped() { return ssd1306_isCharClipped(); }
     inline bool putCh(char ch) { return ssd1306_putCh(ch); }
