@@ -1,3 +1,5 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "readability-convert-member-functions-to-static"
 //
 // Created by Vladimir Schneider on 2023-03-09.
 //
@@ -24,11 +26,6 @@
 #define BIN 2
 #endif
 
-#define SSD1306_WHITE SSD1306_COLOR_WHITE
-#define SSD1306_BLACK SSD1306_COLOR_BLACK
-#define SSD1306_INVERSE SSD1306_COLOR_INVERT
-#define SSD1306_TRANSPARENT SSD1306_COLOR_NONE
-
 #define PROPERTY_GET(pType, pName, pVar) \
     inline pType get##pName() { return pVar; };
 
@@ -42,299 +39,180 @@
 class Ssd1306Display {
 public:
     // backward compatibility for basics
-    inline bool begin(uint8_t switchvcc = SSD1306_SWITCHCAPVCC, uint8_t i2caddr = 0) {
+    inline bool begin(uint8_t switchVcc = SSD1306_SWITCHCAPVCC, uint8_t i2caddr = 0) {
         initDisplay();
         return true;
     }
 
     inline void setTextColor(uint16_t c) {
-        ssd1306_foreColor = c;
-        ssd1306_backColor = SSD1306_COLOR_NONE;
+        ssd1306_fore_color = c;
+        ssd1306_back_color = SSD1306_COLOR_NONE;
     }
 
-    inline void setTextSize(uint8_t s) {
-        if (s == 2) {
-            ssd1306_setTextSizeFlags(SSD1306_TEXT_FLAG_DOUBLE_SIZE);
-        } else {
-            ssd1306_setTextSizeFlags(0);
-        }
-    }
-
+    // @formatter:off
+    inline void setTextSize(uint8_t s) { ssd1306_set_text_size_flags(s == 2 ? SSD1306_TEXT_FLAG_DOUBLE_SIZE : 0); }
     inline void setCursor(int16_t x, int16_t y) { moveTo(x, y); }
-
     inline void setTextCursor(int8_t x, int8_t y) { moveToText(x, y); }
+    inline void drawPixel(int16_t x, int16_t y, color_t color) { ssd1306_set_pixel(x, (coord_y) y, color); }
+    inline int16_t getCursorX() { return ssd1306_cursor_x; };
+    inline int8_t getCursorY() { return ssd1306_cursor_y; };
+    // @formatter:on
 
-    inline void drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color) {
-        setForeColor(color);
-        moveTo(x0, y0);
-        lineTo(x1, y1);
-    }
+    void drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color);
+    void drawRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color);
+    void fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color);
+    void drawRoundRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t r, uint16_t color);
+    void fillRoundRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t r, uint16_t color);
+    void drawCircle(int16_t x0, int16_t y0, int16_t r, uint16_t color);
+    void fillCircle(int16_t x0, int16_t y0, int16_t r, uint16_t color);
+    void drawBitmap(int16_t x, int16_t y, const uint8_t bitmap[], int16_t w, int16_t h, uint16_t color);
+    void getTextBounds(PGM_STR s, int16_t x, int16_t y, int16_t *pX0, int16_t *pY0, uint16_t *pW, uint16_t *pH);
+    void invertDisplay(bool val);
+    void setTextColor(uint16_t c, uint16_t bg);
 
-    inline void drawRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color) {
-        setForeColor(color);
-        moveTo(x0, y0);
-        rect(x1, y1);
-    }
-
-    inline void fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color) {
-        setForeColor(SSD1306_COLOR_NONE);
-        setBackColor(color);
-        moveTo(x0, y0);
-        rect(x1, y1);
-    }
-
-    inline void drawRoundRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t r, uint16_t color) {
-        setForeColor(color);
-        moveTo(x0, y0);
-        roundRect(x1, y1, r, SSD1306_OCT_ALL);
-    }
-
-    inline void fillRoundRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t r, uint16_t color) {
-        setForeColor(SSD1306_COLOR_NONE);
-        setBackColor(color);
-        moveTo(x0, y0);
-        roundRect(x1, y1, r, SSD1306_OCT_ALL);
-    }
-
-    inline void drawCircle(int16_t x0, int16_t y0, int16_t r, uint16_t color) {
-        setForeColor(color);
-        moveTo(x0, y0);
-        circle(r);
-    }
-
-    inline void fillCircle(int16_t x0, int16_t y0, int16_t r, uint16_t color) {
-        setForeColor(SSD1306_COLOR_NONE);
-        setBackColor(color);
-        moveTo(x0, y0);
-        circle(r);
-    }
-
-    inline void drawPixel(int16_t x, int16_t y, color_t color) { ssd1306_setPixel(x, y, color); }
-
-    inline void drawBitmap(int16_t x, int16_t y, const uint8_t bitmap[], int16_t w, int16_t h, uint16_t color) {
-        setCursor(x, y);
-        setForeColor(color);
-        setBackColor(SSD1306_COLOR_NONE);
-        ssd1306_bitmap(bitmap, w, h);
-    }
-
-    inline int16_t getCursorX(void) { return ssd1306_cX; };
-
-    inline int8_t getCursorY(void) { return ssd1306_cY; };
-
-    // FIX: needs work
-    inline void getTextBounds(const __FlashStringHelper *s, int16_t x, int16_t y, int16_t *pX0, int16_t *pY0, uint16_t *pW, uint16_t *pH) {
-        int8_t sy0;
-        uint8_t sh, sw;
-        int16_t sx = ssd1306_cX;
-        int8_t sy = ssd1306_cY;
-
-        ssd1306_cX = x;
-        ssd1306_cY = y;
-        ssd1306_getTextBounds((PGM_P) s, pX0, &sy0, &sw, &sh);
-        ssd1306_cX = sx;
-        ssd1306_cY = sy;
-        if (pY0 != NULL) *pY0 = sy0;
-        if (pW != NULL) *pW = sw;
-        if (pH != NULL) *pH = sh;
-    }
-
-    inline void getTextBounds(const __FlashStringHelper *s, int16_t *pX0, int8_t *pY0, uint8_t *pW, uint8_t *pH) {
-        ssd1306_getTextBounds((PGM_P) s, pX0, pY0, pW, pH);
-    }
-
+    // @formatter:off
+    inline void startTextBounds() { ssd_1306_start_text_bounds(); }
+    inline void endTextBounds(int16_t *pX0, int8_t *pY0, uint8_t *pW, uint8_t *pH) { ssd_1306_end_text_bounds(pX0, pY0, pW, pH); }
+    inline void getTextBounds(PGM_STR s, int16_t *pX0, int8_t *pY0, uint8_t *pW, uint8_t *pH) { ssd1306_get_text_bounds((PGM_P) s, pX0, pY0, pW, pH); }
+    // @formatter:on
 
     // C implementation to map
     PROPERTY(uint8_t, Flags, ssd1306_flags);           // option flags
-    PROPERTY(int8_t, SizeX, ssd1306_cSizeX);          // char width updated when text size flags change
-    PROPERTY(int8_t, SizeY, ssd1306_cSizeY);          // char height updated when text size flags change
+    PROPERTY_GET(uint8_t, TextFlags, ssd1306_text_flags); // text option flags
+    PROPERTY(int8_t, CharW, ssd1306_char_x_size);          // char width updated when text size flags change
+    PROPERTY(int8_t, CharH, ssd1306_char_y_size);          // char height updated when text size flags change
 
-    PROPERTY(int16_t, X, ssd1306_cX); // cursor
-    PROPERTY(int16_t, MaxX, ssd1306_maxX); // cursor
-    PROPERTY(int16_t, LeftMargin, ssd1306_marginLeft); // left margin for text wrapping, normally 0, cX will be set to this on wrapping
-    PROPERTY(int16_t, RightMargin, ssd1306_marginRight); // right margin for text wrapping, normally DISPLAY_XSIZE
-    PROPERTY(int8_t, Y, ssd1306_cY); // cursor
-    PROPERTY(int8_t, MaxY, ssd1306_maxY); // cursor
+    PROPERTY(coord_x, X, ssd1306_cursor_x); // cursor
+    PROPERTY(coord_x, MaxX, ssd1306_max_x); // cursor
+    PROPERTY(coord_x, LeftMargin, ssd1306_margin_left); // left margin for text wrapping, normally 0, cX will be set to this on wrapping
+    PROPERTY(coord_x, RightMargin, ssd1306_margin_right); // right margin for text wrapping, normally DISPLAY_XSIZE
+    PROPERTY(coord_y, Y, ssd1306_cursor_y); // cursor
+    PROPERTY(coord_y, MaxY, ssd1306_max_y); // cursor
 
-    PROPERTY(color_t, ForeColor, ssd1306_foreColor);
+    PROPERTY(color_t, ForeColor, ssd1306_fore_color);
 
-    PROPERTY(color_t, GapColor, ssd1306_gapColor);            // dash gap color
-    PROPERTY(color_t, BackColor, ssd1306_backColor);
+    PROPERTY(color_t, GapColor, ssd1306_gap_color);            // dash gap color
+    PROPERTY(color_t, BackColor, ssd1306_back_color);
 
-    PROPERTY(uint8_t, DashBits, ssd1306_dashBits);            // solid/dash/dot pattern for line outlines (not text)
-    PROPERTY(uint8_t, DashSize, ssd1306_dashSize);            // solid/dash/dot pattern for line outlines (not text)
+    PROPERTY(uint8_t, DashBits, ssd1306_dash_bits);            // solid/dash/dot pattern for line outlines (not text)
+    PROPERTY(uint8_t, DashSize, ssd1306_dash_size);            // solid/dash/dot pattern for line outlines (not text)
     PROPERTY(uint8_t, DashOffset, ssd1306_dashOffset);          // solid/dash/dot pattern for line outlines (not text)
 
     // wrapper on C implementation
-
     // @formatter:off
-    inline void initDisplay() { ssd1306_initDisplay(); }
-    inline void displayOff() { ssd1306_displayOff(); }
-    inline void displayOn() { ssd1306_displayOn(); }
-    inline void clearScreen() { ssd1306_clearScreen(); }
-    inline void clearDisplay() { ssd1306_clearScreen(); }
+    inline void initDisplay() { ssd1306_init_display(); }
+    inline void displayOff() { ssd1306_display_off(); }
+    inline void displayOn() { ssd1306_display_on(); }
+    inline void clearScreen() { ssd1306_clear_screen(); }
+    inline void clearDisplay() { ssd1306_clear_screen(); }
     inline void display() { ssd1306_display(); }
-    inline void setInverted() { ssd1306_setInverted(); }
-    inline void clearInverted() { ssd1306_clearInverted(); }
-    inline void setContrast(uint8_t contrast) { ssd1306_setContrast(contrast); }
-    inline void setLinePattern(uint16_t pattern) { ssd1306_setLinePattern(pattern); }
-    inline uint16_t getLinePattern() { return ssd1306_getLinePattern(); }
+    inline void setInvertedDisplay() { ssd1306_set_inverted(); }
+    inline void clearInvertedDisplay() { ssd1306_clear_inverted(); }
+    inline void setContrast(uint8_t contrast) { ssd1306_set_contrast(contrast); }
+    inline void setLinePattern(uint16_t pattern) { ssd1306_set_line_pattern(pattern); }
+    inline uint16_t getLinePattern() { return ssd1306_get_line_pattern(); }
 
-    inline uint8_t nextDashPixelColor() { return ssd1306_nextDashPixelColor(); }
-    inline uint8_t nextDashBit() { return ssd1306_nextDashBit(); }
-    inline void setPixel(int16_t x, int8_t y, color_t color) { ssd1306_setPixel(x, y, color); }
+    inline uint8_t nextDashPixelColor() { return ssd1306_next_dash_color(); }
+    inline uint8_t nextDashBit() { return ssd1306_next_dash_bit(); }
+    inline void setPixel(coord_x x, coord_y y, color_t color) { ssd1306_set_pixel(x, y, color); }
+    inline void moveToText(int8_t col, int8_t row) { ssd1306_set_text_col_row(col, row); }
+    inline void setColors(color_t fg, color_t bg) { ssd1306_set_colors(fg, bg); }
+    inline void setColors(color_t fg, color_t bg, color_t gp) { ssd1306_set_pattern_colors(fg, bg, gp); }
+    inline void moveTo(coord_x x, coord_y y) { ssd1306_move_to(x, y); }
+    inline void moveToX(coord_x x) { ssd1306_move_x_to(x); }
+    inline void moveToY(coord_y y) { ssd1306_move_y_to(y); }
+    inline void moveBy(coord_x x, coord_y y) { ssd1306_move_by(x, y); }
+    inline void moveXBy(coord_x x) { ssd1306_move_x_by(x); }
+    inline void moveYBy(coord_y y) { ssd1306_move_y_by(y); }
     // @formatter:on
 
-    inline void invertDisplay(bool val) {
-        if (val) {
-            ssd1306_setInverted();
-        } else {
-            ssd1306_clearInverted();
-        }
-    }
-
-    inline void setTextColor(uint16_t c, uint16_t bg) {
-        ssd1306_foreColor = c;
-        ssd1306_backColor = bg;
-    }
-
-    inline void setColors(color_t fg, color_t bg) {
-        ssd1306_foreColor = fg;
-        ssd1306_backColor = bg;
-    }
-
-    inline void setColors(color_t fg, color_t bg, color_t gp) {
-        ssd1306_foreColor = fg;
-        ssd1306_backColor = bg;
-        ssd1306_gapColor = gp;
-    }
-
-    inline void moveTo(int16_t x, int8_t y) {
-        ssd1306_cX = x;
-        ssd1306_cY = y;
-        ssd1306_flags &= ~SSD1306_FLAG_CONTINUED_PATH;
-    }
-
-    inline void moveToText(int8_t x, int8_t y) { ssd1306_setTextColRow(x, y); }
-
-    inline void moveBy(int16_t x, int8_t y) {
-        ssd1306_cX += x;
-        ssd1306_cY += y;
-        ssd1306_flags &= ~SSD1306_FLAG_CONTINUED_PATH;
-    }
-
-    inline void moveXBy(int16_t x) {
-        ssd1306_cX += x;
-        ssd1306_flags &= ~SSD1306_FLAG_CONTINUED_PATH;
-    }
-
-    inline void moveYBy(int8_t y) {
-        ssd1306_cY += y;
-        ssd1306_flags &= ~SSD1306_FLAG_CONTINUED_PATH;
-    }
 
     // @formatter:off
-    inline void drawCircleOctants(int16_t cx, int8_t cy, int16_t x, int8_t y, uint8_t octs) { ssd1306_drawCircleOctants(cx, cy, x, y, octs); }
-    inline void fillCircleOctants(int16_t cx, int8_t cy, int16_t x, int8_t y, uint8_t octs) { ssd1306_fillCircleOctants(cx, cy, x, y, octs); }
-    inline void circleOctants(int8_t r, uint8_t asQuadrants, uint8_t octs, circleOctants drawOctants) { ssd1306_circleOctants(r, asQuadrants, octs, drawOctants); }
-    inline void hLine(int16_t x0, int8_t y0, int16_t x1, color_t color) { ssd1306_hLine(x0, y0, x1, color); }
-    inline void vLine(int16_t x0, int8_t y0, int8_t y1, color_t color) { ssd1306_vLine(x0, y0, y1, color); }
-    inline void hLineTo(int16_t x1) { ssd1306_hLineTo(x1); }
-    inline void vLineTo(int8_t y1) { ssd1306_vLineTo(y1); }
-    inline void lineTo(int16_t x1, int8_t y1) { ssd1306_lineTo(x1, y1); }
-    inline void rect(int16_t x1, int8_t y1) { ssd1306_rect(x1, y1); }
+    inline void drawCircleOctants(coord_x cx, coord_y cy, coord_x x, coord_y y, uint8_t octs) { ssd1306_draw_circle_octants(cx, cy, x, y, octs); }
+    inline void fillCircleOctants(coord_x cx, coord_y cy, coord_x x, coord_y y, uint8_t octs) { ssd1306_fill_circle_octants(cx, cy, x, y, octs); }
+    inline void circleOctants(int8_t r, uint8_t asQuadrants, uint8_t octs, fp_circle_octants drawOctants) { ssd1306_circle_octants(r, octs, drawOctants); }
+    inline void hLine(coord_x x0, coord_y y0, coord_x x1, color_t color) { ssd1306_hline(x0, y0, x1, color); }
+    inline void vLine(coord_x x0, coord_y y0, coord_y y1, color_t color) { ssd1306_vline(x0, y0, y1, color); }
+    inline void hLineTo(coord_x x1) { ssd1306_hline_to(x1); }
+    inline void vLineTo(coord_y y1) { ssd1306_vline_to(y1); }
+    inline void lineTo(coord_x x1, coord_y y1) { ssd1306_line_to(x1, y1); }
+    inline void doubleLineTo(coord_x x1, coord_y y1, int8_t xSpc, coord_y ySpc) { ssd1306_double_line_to(x1, y1, xSpc, ySpc); }
+    inline void doubleHLineTo(coord_x x1, coord_y ySpc) { ssd1306_double_hline_to(x1, ySpc); }
+    inline void doubleVLineTo(int16_t y1, int8_t xSpc) { ssd1306_double_vline_to(y1, xSpc); }
+    inline void rect(coord_x x1, coord_y y1) { ssd1306_rect(x1, y1); }
     inline void circle(int8_t radius) { ssd1306_circle(radius); }
-    inline void roundRect(int16_t x1, int8_t y1, int8_t r, uint8_t octs) { ssd1306_roundRect(x1, y1, r, octs); }
+    inline void roundRect(coord_x x1, coord_y y1, int8_t r, uint8_t octs) { ssd1306_round_rect(x1, y1, r, octs); }
     // @formatter:on
-
-    inline void doubleLineTo(int16_t x1, int8_t y1, int8_t xSpc, int8_t ySpc) {
-        int16_t x0 = getX();
-        int8_t y0 = getY();
-
-        lineTo(x1, y1);
-        moveBy(xSpc, ySpc);
-        lineTo(x0 + xSpc, y0 + ySpc);
-        moveTo(x0, y0);
-    }
-
-    inline void doubleHLineTo(int16_t x1, int8_t ySpc) {
-        int16_t x0 = getX();
-        int8_t y0 = getY();
-
-        hLineTo(x1);
-        moveYBy(ySpc);
-        hLineTo(x0);
-        moveTo(x0, y0);
-    }
-
-    inline void doubleVLineTo(int16_t y1, int8_t xSpc) {
-        int16_t x0 = getX();
-        int8_t y0 = getY();
-
-        vLineTo(y1);
-        moveXBy(xSpc);
-        vLineTo(y0);
-        moveTo(x0, y0);
-    }
-
 
     // text functions
     // @formatter:off
-    inline void setTextSizeFlags(uint8_t flags) { ssd1306_setTextSizeFlags(flags); }
+    inline void setTextSizeFlags(uint8_t flags) { ssd1306_set_text_size_flags(flags); }
+    inline void setTextFlags(uint8_t flags) { ssd1306_set_text_flags(flags); }
+    inline void clearTextFlags(uint8_t flags) { ssd1306_clear_text_flags(flags); }
 
-    inline void setDrawTextBorder() { ssd1306_textFlags |= SSD1306_TEXT_FLAG_BORDER; }
-    inline void clearDrawTextBorder() { ssd1306_textFlags &= ~SSD1306_TEXT_FLAG_BORDER; }
-    inline bool isDrawTextBorder() { return (ssd1306_textFlags & SSD1306_TEXT_FLAG_BORDER); }
+    inline void setWrapText() { setTextFlags(SSD1306_TEXT_FLAG_WRAP); }
+    inline void clearWrapText() { clearTextFlags(SSD1306_TEXT_FLAG_WRAP); }
+    inline bool isTextWrapping() { return someSet(ssd1306_text_flags, SSD1306_TEXT_FLAG_WRAP); }
 
-    inline bool isCharVisible() { return ssd1306_isCharVisible(); }
-    inline bool isCharClipped() { return ssd1306_isCharClipped(); }
-    inline bool putCh(char ch) { return ssd1306_putCh(ch); }
+    inline void setDrawTextBorder() { ssd1306_set_text_flags(SSD1306_TEXT_FLAG_BORDER); }
+    inline void clearDrawTextBorder() { ssd1306_clear_text_flags(SSD1306_TEXT_FLAG_BORDER); }
+    inline bool isDrawTextBorder() { return (ssd1306_text_flags & SSD1306_TEXT_FLAG_BORDER); }
+
+    inline bool isCharVisible() { return ssd1306_is_char_visible(); }
+    inline bool isCharClipped() { return ssd1306_is_char_clipped(); }
+    inline bool putCh(char ch) { return ssd1306_put_ch(ch); }
     // @formatter:on
 
     // @formatter:off
-    inline void write(char ch) { ssd1306_printChar(ch); }
-    inline void print(char ch) { ssd1306_printChar(ch); }
-    inline void print(char ch, uint8_t count) { ssd1306_printChars(ch, count); }
-    inline void print(const char *str) { ssd1306_printText(str); }
-    inline uint8_t print(const char *str, uint8_t count) { return ssd1306_printTextChars(str, count); }
-    inline void print(const __FlashStringHelper *str) { ssd1306_printPgmText((PGM_P)str); }
-    inline uint8_t print(const __FlashStringHelper *str, uint8_t count) { return ssd1306_printPgmTextChars((PGM_P)str, count); }
-    inline void print(double d, uint8_t digits = 0) { ssd1306_printFloat(d, digits); }
-    inline void print(int32_t i) { ssd1306_printInt32(i); }
-    inline void print(int32_t i, uint8_t radix, uint8_t pad = 0, char ch = '0') { ssd1306_printInt32Pad(i, radix, pad, ch); }
-    inline void print(uint32_t i) { ssd1306_printUInt32(i); }
-    inline void print(uint32_t i, uint8_t radix, uint8_t pad = 0, char ch = '0') { ssd1306_printUInt32Pad(i, radix, pad, ch); }
-    inline void print(int16_t i) { ssd1306_printInt16(i); }
-    inline void print(int16_t i, uint8_t radix, uint8_t pad = 0, char ch = '0') { ssd1306_printInt16Pad(i, radix, pad, ch); }
-    inline void print(uint16_t i) { ssd1306_printUInt16(i); }
-    inline void print(uint16_t i, uint8_t radix, uint8_t pad = 0, char ch = '0') { ssd1306_printUInt16Pad(i, radix, pad, ch); }
-    inline void print(int8_t i, uint8_t radix, uint8_t pad = 0, char ch = '0') { ssd1306_printInt8Pad(i, radix, pad, ch); }
-    inline void print(uint8_t i) { ssd1306_printUInt8(i); }
-    inline void printUInt8Pad(uint8_t i, uint8_t radix, uint8_t pad = 0, char ch = '0') { ssd1306_printUInt8Pad(i, radix, pad, ch); }
-    inline void printDigit(uint8_t dig) { ssd1306_printDigit(dig); }
-    inline void printInt8(int8_t i) { ssd1306_printInt8(i); }
+    inline void write(char ch) { ssd1306_putc(ch); }
+    inline void print(char ch) { ssd1306_putc(ch); }
+    inline void print(const char *str) { ssd1306_fputs(str); }
+#ifndef CONSOLE_DEBUG
+    inline void print(PGM_STR str) { ssd1306_fputs_P((PGM_P)str); }
+#endif
+    inline void print(int32_t i) { ssd1306_print_int32(i); }
+    inline void print(int32_t i, uint8_t radix, uint8_t pad = 0, char ch = '0') { ssd1306_print_int32_lpad(i, radix, pad, ch); }
+    inline void print(uint32_t i) { ssd1306_print_uint32(i); }
+    inline void print(uint32_t i, uint8_t radix, uint8_t pad = 0, char ch = '0') { ssd1306_print_uint32_lpad(i, radix, pad, ch); }
+    inline void print(int16_t i) { ssd1306_print_int16(i); }
+    inline void print(int16_t i, uint8_t radix, uint8_t pad = 0, char ch = '0') { ssd1306_print_int16_lpad(i, radix, pad, ch); }
+    inline void print(uint16_t i) { ssd1306_print_uint16(i); }
+    inline void print(uint16_t i, uint8_t radix, uint8_t pad = 0, char ch = '0') { ssd1306_print_uint16_lpad(i, radix, pad, ch); }
+    inline void print(int8_t i, uint8_t radix, uint8_t pad = 0, char ch = '0') { ssd1306_print_int8_lpad(i, radix, pad, ch); }
+    inline void print(uint8_t i) { ssd1306_print_uint8(i); }
+    inline void printUInt8Pad(uint8_t i, uint8_t radix, uint8_t pad = 0, char ch = '0') { ssd1306_print_uint8_lpad(i, radix, pad, ch); }
+    inline void printDigit(uint8_t dig) { ssd1306_put_dig(dig); }
+    inline void printInt8(int8_t i) { ssd1306_print_int8(i); }
 
-    inline void println(char ch) { ssd1306_printChar(ch); ssd1306_newLine(); }
-    inline void println(char ch, uint8_t count) { ssd1306_printChars(ch, count); ssd1306_newLine(); }
-    inline void println(const char *str) { ssd1306_printText(str); ssd1306_newLine(); }
-    inline uint8_t println(const char *str, uint8_t count) { return ssd1306_printTextChars(str, count); ssd1306_newLine(); }
-    inline void println(const __FlashStringHelper *str) { ssd1306_printPgmText((PGM_P)str); ssd1306_newLine(); }
-    inline uint8_t println(const __FlashStringHelper *str, uint8_t count) { return ssd1306_printPgmTextChars((PGM_P)str, count); ssd1306_newLine(); }
-    inline void println(int32_t i) { ssd1306_printInt32(i); ssd1306_newLine(); }
-    inline void println(int32_t i, uint8_t pad, char ch = '0') { ssd1306_printInt32Pad(i, 0, pad, ch); ssd1306_newLine(); }
-    inline void println(uint32_t i) { ssd1306_printUInt32(i); ssd1306_newLine(); }
-    inline void println(uint32_t i, uint8_t radix, uint8_t pad = 0, char ch = '0') { ssd1306_printUInt32Pad(i, radix, pad, ch); ssd1306_newLine(); }
-    inline void println(int16_t i) { ssd1306_printInt16(i); ssd1306_newLine(); }
-    inline void println(int16_t i, uint8_t pad, char ch = '0') { ssd1306_printInt16Pad(i, 0, pad, ch); ssd1306_newLine(); }
-    inline void println(uint16_t i) { ssd1306_printUInt16(i); ssd1306_newLine(); }
-    inline void println(uint16_t i, uint8_t radix, uint8_t pad = 0, char ch = '0') { ssd1306_printUInt16Pad(i, radix, pad, ch); ssd1306_newLine(); }
-    inline void println(int8_t i, uint8_t pad, char ch = '0') { ssd1306_printInt8Pad(i, 0, pad, ch); ssd1306_newLine(); }
-    inline void println(uint8_t i) { ssd1306_printUInt8(i); ssd1306_newLine(); }
-    inline void println(double d, uint8_t digits = 0) { ssd1306_printFloat(d, digits); ssd1306_newLine(); }
+    inline void println(char ch) { ssd1306_putc(ch); ssd1306_new_line(); }
+    inline void println(const char *str) { ssd1306_fputs(str); ssd1306_new_line(); }
+#ifndef CONSOLE_DEBUG
+    inline void println(PGM_STR str) { ssd1306_fputs_P((PGM_P)str); ssd1306_new_line(); }
+#endif
+    inline void println(int32_t i) { ssd1306_print_int32(i); ssd1306_new_line(); }
+    inline void println(int32_t i, uint8_t pad, char ch = '0') { ssd1306_print_int32_lpad(i, 0, pad, ch); ssd1306_new_line(); }
+    inline void println(uint32_t i) { ssd1306_print_uint32(i); ssd1306_new_line(); }
+    inline void println(uint32_t i, uint8_t radix, uint8_t pad = 0, char ch = '0') { ssd1306_print_uint32_lpad(i, radix, pad, ch); ssd1306_new_line(); }
+    inline void println(int16_t i) { ssd1306_print_int16(i); ssd1306_new_line(); }
+    inline void println(int16_t i, uint8_t pad, char ch = '0') { ssd1306_print_int16_lpad(i, 0, pad, ch); ssd1306_new_line(); }
+    inline void println(uint16_t i) { ssd1306_print_uint16(i); ssd1306_new_line(); }
+    inline void println(uint16_t i, uint8_t radix, uint8_t pad = 0, char ch = '0') { ssd1306_print_uint16_lpad(i, radix, pad, ch); ssd1306_new_line(); }
+    inline void println(int8_t i, uint8_t pad, char ch = '0') { ssd1306_print_int8_lpad(i, 0, pad, ch); ssd1306_new_line(); }
+    inline void println(uint8_t i) { ssd1306_print_uint8(i); ssd1306_new_line(); }
+    inline void println(double d, uint8_t digits = 0) { ssd1306_print_float(d, digits); ssd1306_new_line(); }
 // @formatter:on
 
+    inline void printTextCentered(PGM_STR message, uint8_t flags) {
+        ssd1306_print_centered_P((PGM_P) message, flags);
+    }
+
+    inline void printValue(uint8_t flags, int32_t value, uint16_t valueDivider, PGM_STR suffix) {
+        ssd1306_print_value(flags, value, valueDivider, (PGM_P)suffix);
+    }
 };
 
 extern Ssd1306Display display;
 
 #endif //SSD1306_SSD1306DISPLAY_H
+
+#pragma clang diagnostic pop

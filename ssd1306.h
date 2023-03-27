@@ -3,51 +3,42 @@
 
 #ifndef clearBit
 #define clearBit(x, y) (x &= ~_BV(y))     // equivalent to cbi(x,y)
-#endif clearBit
+#endif // clearBit
 
 #ifndef setBit
 #define setBit(x, y) (x |= _BV(y))        // equivalent to sbi(x,y)
-#endif setBit
+#endif // setBit
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 #include "twi.h"
 
-extern uint8_t ssd1306_sendBuffer[TWI_BUFFER_LENGTH];
-extern uint8_t ssd1306_sendPos;
+#ifndef TWI_BUFFER_LENGTH
+#define TWI_BUFFER_LENGTH 32
+#endif //TWI_BUFFER_LENGTH
 
-// initialization
-// config flag values
-#define SSD1306_SWITCHCAPVCC    0x01 ///< Gen. display voltage from 3.3V, otherwise external vcc is used
+extern uint8_t ssd1306_send_buffer[TWI_BUFFER_LENGTH];
+extern uint8_t ssd1306_send_pos;
 
-extern void ssd1306_initDisplay();
+#ifdef SERIAL_DEBUG_GFX_TWI_STATS
+extern uint32_t ssd1306_send_time;
+extern uint16_t ssd1306_send_bytes;
+#endif
 
 // internally used functions for communication to SSD1306 via TWI
 // command transaction markers
-extern void ssd1306_startTwiCmdFrame();
-extern void ssd1306_startTwiDataFrame();
-extern void ssd1306_endTwiFrame();
-
-extern void ssd1306_sendCmd(uint8_t cmd);
+extern void ssd1306_start_twi_cmd_frame();
+extern void ssd1306_end_twi_frame();
+extern void ssd1306_send_cmd(uint8_t cmd);
 
 // sending operations
-extern void ssd1306_twiByte(uint8_t byte);
-extern void ssd1306_twiRepeatedByte(uint8_t byte, uint16_t count);
-extern void ssd1306_twiPgmByteList(const uint8_t *bytes, uint16_t count);
-extern void ssd1306_twiByteList(uint8_t *bytes, uint16_t count);
-
-// display functions
-extern void ssd1306_setInverted();
-extern void ssd1306_clearInverted();
-extern void ssd1306_displayOff();
-extern void ssd1306_displayOn();
-extern void ssd1306_setContrast(uint8_t contrast);
-extern void ssd1306_display();
+extern void ssd1306_twi_byte(uint8_t byte);
+extern void ssd1306_twi_pgm_byte_list(const uint8_t *bytes, uint16_t count);
 
 #ifdef __cplusplus
 }
 #endif
-// helper functions
 
 #endif // _SSD1306_H_

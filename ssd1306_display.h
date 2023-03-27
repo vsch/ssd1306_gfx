@@ -1,30 +1,41 @@
 #ifndef _SSD1306_DISPLAY_H
 #define _SSD1306_DISPLAY_H
 
+#include <stdint.h>
+
 #define SSD1306_OLED_TYPE 91
 #define SSD1306_CONFIG_FLAGS SSD1306_SWITCHCAPVCC
 
-#define noexcept
+// this adds about 650 bytes to flash use and 7 bytes of RAM, but more than doubles character output to screen
+#ifndef SSD1306_NO_BIT_BLIT
+#define SSD1306_BIT_BLIT
+#endif
 
-#define SERIAL_DEBUG
+#ifndef CONSOLE_DEBUG
 
-#ifdef SERIAL_DEBUG
-//#define SERIAL_DEBUG_GFX
+// adds 646 bytes of FLASH use to add smoother double size chars for 0-9,m,l, and .
+//#define SSD1306_LARGE_FONT
+
+// adds 372 bytes of FLASH use
+//#define SSD1306_SMALL_FONT
 
 #ifdef __cplusplus
-extern "C" {
+typedef const __FlashStringHelper *PGM_STR;
 #endif
 
-extern void serial_print(const char *s);
-extern void serial_println(const char *s);
-extern void serial_printPgm(const char *s);
-extern void serial_printPgmln(const char *s);
-extern void serial_printC(char c);
+#else
 
-#ifdef __cplusplus
-}
+#define SSD1306_SMALL_FONT
+#define SSD1306_LARGE_FONT
+
+typedef const char *PGM_P;
+typedef const char *PGM_STR;
+#define PSTR(s)  s
+//#define SSD1306_SWITCHCAPVCC 1
+
 #endif
 
-#endif
+typedef int16_t coord_x;
+typedef int8_t coord_y;
 
 #endif //_SSD1306_DISPLAY_H

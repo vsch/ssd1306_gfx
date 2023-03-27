@@ -1,26 +1,69 @@
-cmake_minimum_required(VERSION 2.8.4)
+cmake_minimum_required(VERSION 3.0.0)
 set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/cmake/ArduinoToolchain.cmake)
 set(CMAKE_CXX_STANDARD 98)
 set(PROJECT_NAME ssd1306)
-set(${PROJECT_NAME}_BOARD pro)
-set(ARDUINO_CPU 8MHzatmega328)
-project(${PROJECT_NAME} C CXX)
 
-# Define the source code for cpp files or default arduino sketch files
-set(${PROJECT_NAME}_SRCS ssd1306_test.cpp.bak ssd1306.c ssd1306_gfx.c ssd1306_max.cpp twi.c)
-set(${PROJECT_NAME}_HDRS ssd1306.h twi.h ssd1306_display.h ssd1306_cmd.h Ssd1306Display.h)
+# use UART with interrupts if set to non-zero
+set(UART_INT 0)
+
+# use DEBUG_MODE dev version of options
+set(DEBUG_MODE 1)
+IF (DEBUG_MODE)
+    set(ARDUINO_CPU 16MHzatmega328)
+    add_compile_definitions(DEBUG_MODE)
+ELSE ()
+    set(ARDUINO_CPU 8MHzatmega328)
+ENDIF ()
+
+set(${PROJECT_NAME}_BOARD pro)
+project(${PROJECT_NAME})
+
+add_compile_definitions(INCLUDE_TWI_INT)
+set(TWI_C_FILES twi.c)
+set(TWI_H_FILES twi.h)
+
+# Define additional source and header files or default arduino sketch files
+set(${PROJECT_NAME}_SRCS
+        print.c
+        Ssd1306Display.cpp
+        ssd1306.c
+        ssd1306_gfx.c
+        ssd1306_print.c
+        ssd1306_main.c
+        ${TWI_C_FILES}
+        )
+set(${PROJECT_NAME}_HDRS
+        print.h
+        Ssd1306Display.h
+        ssd1306.h
+        ssd1306_cmd.h
+        ssd1306_gfx.h
+        ${TWI_H_FILES}
+        )
+
 ### Additional static libraries to include in the target.
-#set(${CMAKE_PROJECT_NAME}_LIBS/..)
+#set(${PROJECT_NAME}_LIBS/..)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
+
+# For nested library sources replace ${LIB_NAME} with library name for each library
+# set(_RECURSE true)
 
 #set(${CMAKE_PROJECT_NAME}_SKETCH ssd1306_test.ino)
 
 #### Additional settings for programmer. From programmers.txt
-set(${CMAKE_PROJECT_NAME}_PROGRAMMER avrispmkii)
-set(${CMAKE_PROJECT_NAME}_PORT /dev/cu.usbserial-00000000)
-# set(pro.upload.speed 57600)
+set(${PROJECT_NAME}_PROGRAMMER avrispmkii)
+set(${PROJECT_NAME}_PORT /dev/cu.usbserial-00000000)
+set(pro.upload.speed 57600)
 
 ## Verbose build process
-set(${CMAKE_PROJECT_NAME}_AFLAGS -v)
+set(${PROJECT_NAME}_AFLAGS -v)
 
-generate_arduino_firmware(${CMAKE_PROJECT_NAME})
+generate_arduino_firmware(${PROJECT_NAME})
+
+print_board_list()
+print_programmer_list()
+
+# Configure ATmega328p Library options, it knows nothing of the Arduino CMake options.
+add_compile_definitions(BAUD=${pro.upload.speed})
+add_compile_definitions(TWI_FREQUENCY=400000)
+

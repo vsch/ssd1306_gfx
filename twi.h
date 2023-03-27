@@ -1,55 +1,261 @@
 /*
-  twi.h - TWI/I2C library for Wiring & Arduino
-  Copyright (c) 2006 Nicholas Zambetti.  All right reserved.
+ * twi.h
+ *
+ * Minimalistic, blocking TWI driver.
+ *
+ * Author:      Vladimir Schneider
+ * Hardware:    ATmega328P
+ *
+ *              Combined blocking and interrupt driven into one file because OLED-091 SSD1306 would not initialize
+ *              with the ISR driver alone. However, after initialization using interrupts to send commands works.
+ *
+* Author:      Sebastian Goessl
+ * Hardware:    ATmega328P
+ *
+ * LICENSE:
+ * MIT License
+ *
+ * Copyright (c) 2018 Sebastian Goessl
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ */
 
-  This library is free software; you can redistribute it and/or
-  modify it under the terms of the GNU Lesser General Public
-  License as published by the Free Software Foundation; either
-  version 2.1 of the License, or (at your option) any later version.
+#ifndef TWI_H_
+#define TWI_H_
 
-  This library is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  Lesser General Public License for more details.
+#include <stdbool.h>    //bool type
+#include <stddef.h>     //size_t type
+#include <stdint.h>     //uint8_t type
+#include <stddef.h>     //size_t type
 
-  You should have received a copy of the GNU Lesser General Public
-  License along with this library; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+//default to Fast Mode
+#ifndef TWI_FREQUENCY
+#define TWI_FREQUENCY 400000
+#endif
+
+/** Slave address with write intend. */
+#define TWI_ADDRESS_W(x)    (((x) << 1) & ~0x01)
+/** Slave address with read intend. */
+#define TWI_ADDRESS_R(x)    (((x) << 1) | 0x01)
+
+/**
+ * Initializes the TWI hardware for master mode operating at TWI_FREQUENCY.
+ * Configures SCL and SDA (PC5 and PC4) as outputs.
+ */
+void twi_init(void);
+
+#ifdef INCLUDE_TWI_INT
+
+/** error count from ISR, to get errors for last twiint_start(), check and reset this to 0 before the call */
+extern uint16_t twint_errors;
+
+/**
+* Returns true if currently a transmission is ongoing.
+*
+* @return if currently a transmission is ongoing
 */
+bool twiint_busy(void);
 
-#ifndef twi_h
-#define twi_h
+/**
+ * Blocks until the transmission is completed.
+ * Returns last status
+ */
+void twiint_flush(void);
 
-  #include <inttypes.h>
-
-  //#define ATMEGA8
-
-  #ifndef TWI_FREQ
-  #define TWI_FREQ 100000L
-  #endif
-
-  #ifndef TWI_BUFFER_LENGTH
-  #define TWI_BUFFER_LENGTH 32
-  #endif
-
-  #define TWI_READY 0
-  #define TWI_MRX   1
-  #define TWI_MTX   2
-  #define TWI_SRX   3
-  #define TWI_STX   4
-  
-  void twi_init(void);
-  void twi_disable(void);
-  void twi_setAddress(uint8_t);
-  void twi_setFrequency(uint32_t);
-  uint8_t twi_readFrom(uint8_t, uint8_t*, uint8_t, uint8_t);
-  uint8_t twi_writeTo(uint8_t, uint8_t*, uint8_t, uint8_t, uint8_t);
-  uint8_t twi_transmit(const uint8_t*, uint8_t);
-  void twi_attachSlaveRxEvent( void (*)(uint8_t*, int) );
-  void twi_attachSlaveTxEvent( void (*)(void) );
-  void twi_reply(uint8_t);
-  void twi_stop(void);
-  void twi_releaseBus(void);
+/**
+ * Starts a TWI transmission writing or reading multiple bytes.
+ * The address byte should be provided already manipulated by
+ * TWI_ADDRESS_W if data should be written
+ * or TWI_ADDRESS_R if data should be read,
+ * both slave address in 7-bit format.
+ * This function then returns while the transmission continues,
+ * getting handled by interrupts routines.
+ * The data location must not be changed while the transmission is ongoing
+ * as the bytes are read/written as they are needed.
+ * When an transmission is still ongoing, this function blocks until the
+ * transmission is completed before starting a new one.
+ *
+ * @param address slave address byte, use the result of TWI_ADDRESS_W for write
+ * intend or TWI_ADDRESS_R for read intend applied on the 7-bit address
+ * @param data location of the bytes to transmit
+ * or location for the read in bytes to be written to
+ * @param len number of bytes to write/read
+ */
+void twiint_start(uint8_t address, uint8_t *data, size_t len);
 
 #endif
 
+/**
+ * Sends a START condition and returns 0 on success.
+ *
+ * @return 0 on success, 1 otherwise
+ */
+bool twi_start(void);
+
+/**
+ * Sends a REPeated START condition and returns 0 on success.
+ *
+ * @return 0 on success, 1 otherwise
+ */
+bool twi_repStart(void);
+
+/**
+ * Sends a STOP condition.
+ */
+void twi_stop(void);
+
+/**
+ * Sends the slave address (7 bit, SLA) with intend to write (SLA_W).
+ *
+ * @param address address of the slave (7-bit)
+ * @return 0 if an acknowledge bit (ACK) was returned, 1 otherwise (NACK)
+ */
+bool twi_addressWrite(uint8_t address);
+
+/**
+ * Sends the slave address (7 bit, SLA) with intend to read (SLA_R).
+ *
+ * @param address address of the slave (7-bit)
+ * @return 0 if an acknowledge bit (ACK) was returned, 1 otherwise (NACK)
+ */
+bool twi_addressRead(uint8_t address);
+
+/**
+ * Writes a single byte (DATA).
+ *
+ * @param data byte to write
+ * @return 0 if an acknowledge bit (ACK) was returned, 1 otherwise (NACK)
+ */
+bool twi_write(uint8_t data);
+
+/**
+ * Writes multiple bytes (DATA) until all bytes have been written
+ * or no acknowledge bit (NACK) has been returned.
+ *
+ * @param data location of the bytes to write
+ * @param len number of bytes to write
+ * @return number of bytes
+ * for which acknowledge bits (ACK) have been received (len-1 on success)
+ */
+
+size_t twi_writeBurst(uint8_t *data, size_t len);
+/**
+ * Reads a single byte (DATA) and sends an acknowledge bit (ACK).
+ *
+ * @param data location where the byte should be written to
+ * @return 0 on success, 1 otherwise
+ */
+bool twi_readAck(uint8_t *data);
+
+/**
+ * Reads multiple data bytes (DATA) and always sends acknowledge bits (ACK)
+ * until all bytes have been read or a read has failed.
+ *
+ * @param data location where the bytes should be written to
+ * @param len number of bytes to read
+ * @return the number of bytes
+ * that have been read successfully (len on success)
+ */
+size_t twi_readAckBurst(uint8_t *data, size_t len);
+
+/**
+ * Reads a single byte (DATA) and sends no acknowledge bit (NACK).
+ *
+ * @param data location where the byte should be written to
+ * @return 0 on success, 1 otherwise
+ */
+
+bool twi_readNoAck(uint8_t *data);
+/**
+ * Reads multiple data bytes (DATA) and never sends an acknowledge bit (NACK)
+ * until all bytes have been read or a read has failed.
+ *
+ * @param data location where the bytes should be written to
+ * @param len number of bytes to read
+ * @return the number of bytes
+ * that have been read successfully (len on success)
+ */
+
+size_t twi_readNoAckBurst(uint8_t *data, size_t len);
+
+/**
+ * Writes multiple bytes to a slave (START, SLA_W, DATA, ..., DATA, STOP).
+ * If sending the START condition fails, this function immediately returns 1.
+ * If any failure occurs after the START condition,
+ * the communication is immediately terminated with a STOP condition
+ * and then this function returns 1.
+ *
+ * @param address address of the slave (7-bit)
+ * @param data location of the bytes to write
+ * @param len number of bytes to write
+ * @return 0 on success, 1 on failure
+ */
+bool twi_writeToSlave(uint8_t address, uint8_t *data, size_t len);
+
+/**
+ * Reads multiple bytes from a slave
+ * (START, SLA_R, DATA+ACK, ..., DATA+ACK, DATA+NACK, STOP).
+ * If sending the START condition fails, this function immediately returns 1.
+ * If any failure occurs after the START condition,
+ * the communication is immediately terminated with a STOP condition
+ * and then this function returns 1.
+ *
+ * @param address address of the slave (7-bit)
+ * @param data location where the bytes should be written to
+ * @param len number of bytes to read
+ * @return 0 on success, 1 on failure
+ */
+bool twi_readFromSlave(uint8_t address, uint8_t *data, size_t len);
+
+/**
+ * Writes a single byte followed by multiple bytes to a slave
+ * (START, SLA_W, DATA (reg), DATA, ..., DATA, STOP).
+ * If sending the START condition fails, this function immediately returns 1.
+ * If any failure occurs after the START condition,
+ * the communication is immediately terminated with a STOP condition
+ * and then this function returns 1.
+ *
+ * @param address address of the slave (7-bit)
+ * @param reg byte to write before the multiple bytes
+ * @param data location of the bytes to write
+ * @param len number of bytes to write
+ * @return 0 on success, 1 on failure
+ */
+bool twi_writeToSlaveRegister(
+        uint8_t address, uint8_t reg, uint8_t *data, size_t len);
+
+/**
+ * First writes a single byte to a slave and the reads multiple bytes from it
+ * (START, SLA_W, DATA (reg),
+ * START, SLA_R, DATA+ACK, ..., DATA+ACK, DATA+NACK, STOP).
+ * If sending the START condition fails, this function immediately returns 1.
+ * If any failure occurs after the START condition,
+ * the communication is immediately terminated with a STOP condition
+ * and then this function returns 1.
+ *
+ * @param address address of the slave (7-bit)
+ * @param reg byte to write before reading from the slave
+ * @param data location where the bytes should be written to
+ * @param len number of bytes to read
+ * @return 0 on success, 1 on failure
+ */
+bool twi_readFromSlaveRegister(
+        uint8_t address, uint8_t reg, uint8_t *data, size_t len);
+
+#endif /* TWI_H_ */
