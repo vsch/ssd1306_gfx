@@ -89,3 +89,7 @@ void Ssd1306Display::drawBitmap(int16_t x, int16_t y, const uint8_t bitmap[], in
     ssd1306_bitmap(bitmap, w, h);
 }
 
+void Ssd1306Display::printValue(uint8_t flags, int32_t value, uint16_t valueDivider, PGM_STR suffix) {
+    ssd1306_print_value(flags, value, valueDivider, (PGM_P)suffix);
+}
+

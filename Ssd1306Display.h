@@ -206,9 +206,7 @@ public:
         ssd1306_print_centered_P((PGM_P) message, flags);
     }
 
-    inline void printValue(uint8_t flags, int32_t value, uint16_t valueDivider, PGM_STR suffix) {
-        ssd1306_print_value(flags, value, valueDivider, (PGM_P)suffix);
-    }
+    void printValue(uint8_t flags, int32_t value, uint16_t valueDivider, PGM_STR suffix);
 };
 
 extern Ssd1306Display display;
