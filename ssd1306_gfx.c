@@ -23,7 +23,7 @@
 // GLOBAL VARIABLES
 const char spcString[] PROGMEM = { ' ', '\0' };
 
-const uint8_t FONT_CHARS[96][SSD1306_FONT_X_PIXELS] PROGMEM = {
+const uint8_t FONT_CHARS[96][GFX_FONT_X_PIXELS] PROGMEM = {
         0x00, 0x00, 0x00, 0x00, 0x00, // 0x20 - (space)
         0x00, 0x00, 0x5F, 0x00, 0x00, // 0x21 - !
         0x00, 0x07, 0x00, 0x07, 0x00, // 0x22 - "
@@ -122,8 +122,8 @@ const uint8_t FONT_CHARS[96][SSD1306_FONT_X_PIXELS] PROGMEM = {
         0x08, 0x1C, 0x2A, 0x08, 0x08, // 0x7F - <-
 };
 
-#ifdef SSD1306_SMALL_FONT
-const uint8_t SMALL_CHARS[17][SSD1306_SMALL_X_PIXELS * SSD1306_SMALL_Y_ROWS] PROGMEM = {
+#ifdef GFX_SMALL_FONT
+const uint8_t SMALL_CHARS[17][GFX_SMALL_X_PIXELS * GFX_SMALL_Y_ROWS] PROGMEM = {
         0x00, 0x00, 0x00, // 0x20 - ' '
         0x19, 0x04, 0x13, // 0x25 - '%'
         0x04, 0x0E, 0x04, // 0x2b - '+'
@@ -155,10 +155,10 @@ const uint8_t SMALL_CHAR_SET[] PROGMEM = {
         0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00,
 };
-#endif // SSD1306_SMALL_FONT
+#endif // GFX_SMALL_FONT
 
-#ifdef SSD1306_LARGE_FONT
-const uint8_t LARGE_CHARS[13][SSD1306_LARGE_X_PIXELS * SSD1306_LARGE_Y_ROWS] PROGMEM = {
+#ifdef GFX_LARGE_FONT
+const uint8_t LARGE_CHARS[13][GFX_LARGE_X_PIXELS * GFX_LARGE_Y_ROWS] PROGMEM = {
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 0x2e - '.'
         0x00, 0x00, 0x18, 0x3C, 0x3C, 0x18, 0x00, 0x00, 0x00, 0x00,
         0xFC, 0xFE, 0x03, 0x03, 0xC3, 0xE3, 0x33, 0x1B, 0xFE, 0xFC, // 0x30 - '0'
@@ -199,78 +199,91 @@ const uint8_t LARGE_CHAR_SET[] PROGMEM = {
         0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00,
 };
-#endif // SSD1306_LARGE_FONT
+#endif // GFX_LARGE_FONT
 
-uint8_t ssd1306_flags;              // option flags
-uint8_t ssd1306_text_flags;              // option flags
-int8_t ssd1306_char_x_size;              // updated when text size flags change
-int8_t ssd1306_char_y_size;              // updated when text size flags change
+uint8_t gfx_flags;              // option flags
+uint8_t gfx_text_flags;              // option flags
+int8_t gfx_char_x_size;              // updated when text size flags change
+int8_t gfx_char_y_size;              // updated when text size flags change
 
-coord_x ssd1306_cursor_x;                 // cursor
-coord_x ssd1306_max_x;                // max X value when printing a string and wrapping
-coord_x ssd1306_min_x;                // max X value when printing a string and wrapping
-coord_x ssd1306_margin_left;              // left margin for text wrapping
-coord_x ssd1306_margin_right;             // right margin for text wrapping
-coord_y ssd1306_cursor_y;                  // cursor
-coord_y ssd1306_max_y;                // max Y value when printing a string and wrapping
-coord_y ssd1306_min_y;                // max Y value when printing a string and wrapping
+coord_x gfx_cursor_x;                 // cursor
+coord_x gfx_last_cursor_x;                 // cursor after last __to operation
+coord_x gfx_max_x;                // max X value when printing a string and wrapping
+coord_x gfx_min_x;                // max X value when printing a string and wrapping
+coord_x gfx_margin_left;              // left margin for text wrapping
+coord_x gfx_margin_right;             // right margin for text wrapping
+coord_y gfx_cursor_y;                  // cursor
+coord_y gfx_last_cursor_y;                  // cursor after last __to operation
+coord_y gfx_max_y;                // max Y value when printing a string and wrapping
+coord_y gfx_min_y;                // max Y value when printing a string and wrapping
 
-color_t ssd1306_fore_color;
-color_t ssd1306_gap_color;
-color_t ssd1306_back_color;
+color_t gfx_fore_color;
+color_t gfx_gap_color;
+color_t gfx_back_color;
 
-uint8_t ssd1306_dash_bits;            // solid/dash/dot pattern for line outlines (not text)
-uint8_t ssd1306_dash_size;            // solid/dash/dot pattern for line outlines (not text)
-uint8_t ssd1306_dashOffset;          // solid/dash/dot pattern for line outlines (not text)
+uint8_t gfx_dash_bits;            // solid/dash/dot pattern for line outlines (not text)
+uint8_t gfx_dash_size;            // solid/dash/dot pattern for line outlines (not text)
+uint8_t gfx_dashOffset;          // solid/dash/dot pattern for line outlines (not text)
 
-uint8_t ssd1306_wrap_buff_pos; // next character in buffer
-char ssd1306_wrap_buff[SSD1306_WRAP_BUFFER_SIZE]; // characters buffered when looking for space on which to possibly break
+uint8_t gfx_wrap_buff_pos; // next character in buffer
+char gfx_wrap_buff[GFX_WRAP_BUFFER_SIZE]; // characters buffered when looking for space on which to possibly break
 
 #ifdef SERIAL_DEBUG_GFX_STATS
-uint32_t ssd1306_put_ch_total;
-uint16_t ssd1306_put_ch_count;
-uint32_t ssd1306_put_ch_lp_total;
-uint32_t ssd1306_put_ch_lp_count;
-uint32_t ssd1306_putc_total;
-uint16_t ssd1306_putc_count;
-uint32_t ssd1306_put_pixel_total;
-uint32_t ssd1306_put_pixel_count;
+uint32_t gfx_put_ch_total;
+uint16_t gfx_put_ch_count;
+uint32_t gfx_put_ch_lp_total;
+uint32_t gfx_put_ch_lp_count;
+uint32_t gfx_putc_total;
+uint16_t gfx_putc_count;
+uint32_t gfx_put_pixel_total;
+uint32_t gfx_put_pixel_count;
 #endif
 
-void ssd1306_clear_screen() {
-    ssd1306_flags = 0;
-    ssd1306_text_flags = 0;
-    ssd1306_char_x_size = CHAR_WIDTH;    // updated when text size flags change
-    ssd1306_char_y_size = CHAR_HEIGHT;   // updated when text size flags change
-    ssd1306_fore_color = SSD1306_COLOR_WHITE;
-    ssd1306_back_color = SSD1306_COLOR_NONE;
-    ssd1306_gap_color = SSD1306_COLOR_NONE;
-    ssd1306_dash_bits = SSD1306_BITS_DASH_NONE;
-    ssd1306_dash_size = SSD1306_SIZE_DASH_NONE;
-    ssd1306_cursor_x = 0;
-    ssd1306_cursor_y = 0;
-    ssd1306_margin_left = 0;
-    ssd1306_margin_right = DISPLAY_XSIZE;
-    ssd1306_wrap_buff_pos = 0;
-    ssd1306_max_x = 0;
-    ssd1306_min_x = 0;
-    ssd1306_max_y = 0;
-    ssd1306_min_y = 0;
-    ssd1306_dashOffset = 0;
-    memset(ssd1306_display_buffer, 0, sizeof(ssd1306_display_buffer));
+void gfx_clear_screen() {
+    gfx_flags = 0;
+    gfx_text_flags = 0;
+    gfx_char_x_size = CHAR_WIDTH;    // updated when text size flags change
+    gfx_char_y_size = CHAR_HEIGHT;   // updated when text size flags change
+    gfx_fore_color = GFX_COLOR_WHITE;
+    gfx_back_color = GFX_COLOR_NONE;
+    gfx_gap_color = GFX_COLOR_NONE;
+    gfx_dash_bits = GFX_BITS_DASH_NONE;
+    gfx_dash_size = GFX_SIZE_DASH_NONE;
+    gfx_cursor_x = 0;
+    gfx_cursor_y = 0;
+    gfx_last_cursor_x = 0x8000;
+    gfx_last_cursor_y = 0x80;
+    gfx_margin_left = 0;
+    gfx_margin_right = DISPLAY_XSIZE;
+    gfx_wrap_buff_pos = 0;
+    gfx_max_x = 0;
+    gfx_min_x = 0;
+    gfx_max_y = 0;
+    gfx_min_y = 0;
+    gfx_dashOffset = 0;
+    memset(gfx_display_buffer, 0, sizeof(gfx_display_buffer));
 
 #ifdef SERIAL_DEBUG_GFX_STATS
-    ssd1306_put_ch_total = 0;
-    ssd1306_put_ch_count = 0;
-    ssd1306_putc_total = 0;
-    ssd1306_putc_count = 0;
-    ssd1306_put_ch_lp_total = 0;
-    ssd1306_put_ch_lp_count = 0;
-    ssd1306_put_pixel_total = 0;
-    ssd1306_put_pixel_count = 0;
+    gfx_put_ch_total = 0;
+    gfx_put_ch_count = 0;
+    gfx_putc_total = 0;
+    gfx_putc_count = 0;
+    gfx_put_ch_lp_total = 0;
+    gfx_put_ch_lp_count = 0;
+    gfx_put_pixel_total = 0;
+    gfx_put_pixel_count = 0;
 
 #endif
 }
+
+#define CHECK_PATH_CONTINUES() \
+    ((gfx_last_cursor_x != gfx_cursor_x || gfx_last_cursor_y != gfx_cursor_y) \
+    ? gfx_flags &= ~GFX_FLAG_CONTINUED_PATH                                  \
+    : 0, gfx_flags & GFX_FLAG_CONTINUED_PATH)
+
+#define SET_PATH_CONTINUES() gfx_last_cursor_x = gfx_cursor_x, gfx_last_cursor_y = gfx_cursor_y, gfx_flags |= GFX_FLAG_CONTINUED_PATH
+
+#define CLEAR_PATH_CONTINUES() gfx_flags &= ~GFX_FLAG_CONTINUED_PATH
 
 // ---------------------------------------------------------------------------
 // SIMPLE GRAPHICS ROUTINES
@@ -279,65 +292,76 @@ void ssd1306_clear_screen() {
 // but these can easily be changed to int params for larger displays.
 
 // draw pixel in given color
-void ssd1306_set_pixel(uint8_t x, coord_y y, color_t color) {
+void gfx_set_pixel(uint8_t x, coord_y y, color_t color) {
     // HACK: Only works if sizes are powers of two
-    if (color != SSD1306_COLOR_NONE && COORDS_IN_DISPLAY(x, y)) {
+    if (color != GFX_COLOR_NONE && COORDS_IN_DISPLAY(x, y)) {
         uint8_t page = y >> 3;
         uint8_t mask = (uint8_t) (1 << (y & 7));
-        if (color == SSD1306_COLOR_WHITE) {
-            ssd1306_display_buffer[page][x] |= mask;
-        } else if (color == SSD1306_COLOR_BLACK) {
-            ssd1306_display_buffer[page][x] &= ~mask;
-        } else if (color == SSD1306_COLOR_INVERT) {
-            ssd1306_display_buffer[page][x] ^= mask;
+        if (color == GFX_COLOR_WHITE) {
+            gfx_display_buffer[page][x] |= mask;
+        } else if (color == GFX_COLOR_BLACK) {
+            gfx_display_buffer[page][x] &= ~mask;
+        } else if (color == GFX_COLOR_INVERT) {
+            gfx_display_buffer[page][x] ^= mask;
         }
     }
 }
 
-void ssd1306_set_line_pattern(uint16_t pattern) {
-    ssd1306_dash_bits = GET_DASH_BITS(pattern);
-    ssd1306_dash_size = GET_DASH_SIZE(pattern);
-    ssd1306_dashOffset = 0;
+void gfx_set_line_pattern(uint16_t pattern) {
+    gfx_dash_bits = GET_DASH_BITS(pattern);
+    gfx_dash_size = GET_DASH_SIZE(pattern);
+    gfx_dashOffset = 0;
 }
 
-uint16_t ssd1306_get_line_pattern() {
-    return LINE_PATTERN(ssd1306_dash_bits, ssd1306_dash_size);
+uint16_t gfx_get_line_pattern() {
+    return LINE_PATTERN(gfx_dash_bits, gfx_dash_size);
 }
 
-bool ssd1306_next_dash_bit() {
-    if (ssd1306_dashOffset >= ssd1306_dash_size) {
-        ssd1306_dashOffset = 0;
+bool gfx_next_dash_bit() {
+    if (gfx_dashOffset >= gfx_dash_size) {
+        gfx_dashOffset = 0;
     }
-    return ssd1306_dash_bits & (1 << ssd1306_dashOffset++);
+    return gfx_dash_bits & (1 << gfx_dashOffset++);
 }
 
-color_t ssd1306_next_dash_color() {
-    if (ssd1306_dash_bits == SSD1306_BITS_DASH_NONE && ssd1306_dash_size == SSD1306_SIZE_DASH_NONE) {
-        return ssd1306_fore_color;
+color_t gfx_next_dash_color() {
+    if (gfx_dash_bits == GFX_BITS_DASH_NONE && gfx_dash_size == GFX_SIZE_DASH_NONE) {
+        return gfx_fore_color;
     } else {
-        return ssd1306_next_dash_bit() ? ssd1306_fore_color : ssd1306_gap_color;
+        return gfx_next_dash_bit() ? gfx_fore_color : gfx_gap_color;
     }
 }
 
-void ssd1306_hline(coord_x x0, coord_y y0, coord_x x1, color_t color) {
-    ssd1306_normalize_x(&x0, &x1);
+uint8_t gfx_have_line_pattern() {
+    return gfx_dash_bits != GFX_BITS_DASH_NONE || gfx_dash_size != GFX_BITS_DASH_NONE;
+}
+
+void gfx_hline(coord_x x0, coord_y y0, coord_x x1, color_t color) {
+    gfx_normalize_x(&x0, &x1);
     while (x0 <= x1) {
-        ssd1306_set_pixel(x0++, y0, color);
+        gfx_set_pixel(x0++, y0, color);
     }
 }
 
-void ssd1306_hline_dashed(coord_x x0, coord_y y0, coord_x x1) {
-    ssd1306_normalize_x(&x0, &x1);
-    while (x0 <= x1) {
-        ssd1306_set_pixel(x0++, y0, ssd1306_next_dash_color());
+void gfx_hline_dashed(coord_x x0, coord_y y0, coord_x x1) {
+    if (!gfx_have_line_pattern()) {
+        gfx_hline(x0, y0, x1, gfx_fore_color);
+    } else {
+        gfx_normalize_x(&x0, &x1);
+        while (x0 <= x1) {
+            gfx_set_pixel(x0++, y0, gfx_next_dash_color());
+        }
     }
 }
 
 // draws a vertical line in given color
-void ssd1306_vline(coord_x x0, coord_y y0, coord_y y1, color_t color) {
-    ssd1306_normalize_y(&y0, &y1);
-#ifdef SSD1306_BIT_BLIT
+void gfx_vline(coord_x x0, coord_y y0, coord_y y1, color_t color) {
+    if (x0 < 0 || x0 >= DISPLAY_XSIZE) return;
+
+    gfx_normalize_y(&y0, &y1);
+#ifdef GFX_BIT_BLIT
     if (y0 < 0) y0 = 0;
+    if (y1 < 0) y1 = 0;
     if (x0 < 0) x0 = 0;
 
     if (y1 > DISPLAY_YSIZE) y1 = DISPLAY_YSIZE;
@@ -356,19 +380,19 @@ void ssd1306_vline(coord_x x0, coord_y y0, coord_y y1, color_t color) {
         }
 
         switch (color) {
-            case SSD1306_COLOR_WHITE :
-                ssd1306_display_buffer[yStartPage][x0] |= startMask;
+            case GFX_COLOR_WHITE :
+                gfx_display_buffer[yStartPage][x0] |= startMask;
                 break;
 
-            case SSD1306_COLOR_BLACK :
-                ssd1306_display_buffer[yStartPage][x0] &= ~startMask;
+            case GFX_COLOR_BLACK :
+                gfx_display_buffer[yStartPage][x0] &= ~startMask;
                 break;
 
-            case SSD1306_COLOR_INVERT :
-                ssd1306_display_buffer[yStartPage][x0] ^= startMask;
+            case GFX_COLOR_INVERT :
+                gfx_display_buffer[yStartPage][x0] ^= startMask;
                 break;
 
-            case SSD1306_COLOR_NONE :
+            case GFX_COLOR_NONE :
             default:
                 return;
         }
@@ -378,86 +402,90 @@ void ssd1306_vline(coord_x x0, coord_y y0, coord_y y1, color_t color) {
     }
 #else
     while (y0 <= y1) {
-        ssd1306_set_pixel(x0, y0++, color);
+        gfx_set_pixel(x0, y0++, color);
     }
 #endif
 }
 
-void ssd1306_vline_dashed(coord_x x0, coord_y y0, coord_y y1) {
-    ssd1306_normalize_y(&y0, &y1);
-    while (y0 <= y1) {
-        ssd1306_set_pixel(x0, y0++, ssd1306_next_dash_color());
+void gfx_vline_dashed(coord_x x0, coord_y y0, coord_y y1) {
+    if (!gfx_have_line_pattern()) {
+        gfx_vline(x0, y0, y1, gfx_fore_color);
+    } else {
+        gfx_normalize_y(&y0, &y1);
+        while (y0 <= y1) {
+            gfx_set_pixel(x0, y0++, gfx_next_dash_color());
+        }
     }
 }
 
-void ssd1306_hline_to(coord_x x1) {
-    if (ssd1306_cursor_x != x1) {
-        coord_x x0 = ssd1306_cursor_x;
-        ssd1306_cursor_x = x1;
+void gfx_hline_to(coord_x x1) {
+    if (gfx_cursor_x != x1) {
+        coord_x x0 = gfx_cursor_x;
+        gfx_cursor_x = x1;
 
-        ssd1306_normalize_x(&x0, &x1);
-        if (ssd1306_flags & SSD1306_FLAG_CONTINUED_PATH) {
+        gfx_normalize_x(&x0, &x1);
+        if (CHECK_PATH_CONTINUES()) {
             x0++;
         }
-        ssd1306_hline_dashed(x0, ssd1306_cursor_y, x1);
-        ssd1306_flags |= SSD1306_FLAG_CONTINUED_PATH;
+        gfx_hline_dashed(x0, gfx_cursor_y, x1);
+        SET_PATH_CONTINUES();
     }
 }
 
 // draws a vertical line in given color
-void ssd1306_vline_to(coord_y y1) {
-    if (ssd1306_cursor_y != y1) {
-        coord_y y0 = ssd1306_cursor_y;
-        ssd1306_cursor_y = y1;
+void gfx_vline_to(coord_y y1) {
+    if (gfx_cursor_y != y1) {
+        coord_y y0 = gfx_cursor_y;
+        gfx_cursor_y = y1;
 
-        ssd1306_normalize_y(&y0, &y1);
-        if (ssd1306_flags & SSD1306_FLAG_CONTINUED_PATH) {
+        gfx_normalize_y(&y0, &y1);
+        if (CHECK_PATH_CONTINUES()) {
             y0++;
         }
-        ssd1306_vline_dashed(ssd1306_cursor_x, y0, y1);
-        ssd1306_flags |= SSD1306_FLAG_CONTINUED_PATH;
+        gfx_vline_dashed(gfx_cursor_x, y0, y1);
+        SET_PATH_CONTINUES();
     }
 }
 
-void ssd1306_line_to(coord_x x1, coord_y y1) {
-    if (x1 == ssd1306_cursor_x) {
-        ssd1306_vline_to(y1);
-    } else if (y1 == ssd1306_cursor_y) {
-        ssd1306_hline_to(x1);
+void gfx_line_to(coord_x x1, coord_y y1) {
+    if (x1 == gfx_cursor_x) {
+        gfx_vline_to(y1);
+    } else if (y1 == gfx_cursor_y) {
+        gfx_hline_to(x1);
     } else {
-        int8_t dx = abs(x1 - ssd1306_cursor_x), sx = ssd1306_cursor_x < x1 ? 1 : -1;
-        int8_t dy = abs(y1 - ssd1306_cursor_y), sy = ssd1306_cursor_y < y1 ? 1 : -1;
+        int8_t dx = abs(x1 - gfx_cursor_x), sx = gfx_cursor_x < x1 ? 1 : -1;
+        int8_t dy = abs(y1 - gfx_cursor_y), sy = gfx_cursor_y < y1 ? 1 : -1;
 
         int8_t e2;
         int8_t err = (int8_t) ((dx > dy ? dx : -dy) / 2);
-        uint8_t skip = ssd1306_flags & SSD1306_FLAG_CONTINUED_PATH;
+        uint8_t skip = CHECK_PATH_CONTINUES();
 
         for (;;) {
             if (skip) {
                 skip = 0;
                 continue;
             }
-            ssd1306_set_pixel(ssd1306_cursor_x, ssd1306_cursor_y, ssd1306_next_dash_color());
+            gfx_set_pixel(gfx_cursor_x, gfx_cursor_y, gfx_next_dash_color());
 
-            if (ssd1306_cursor_x == x1 && ssd1306_cursor_y == y1) {
-                ssd1306_flags |= SSD1306_FLAG_CONTINUED_PATH;
+            if (gfx_cursor_x == x1 && gfx_cursor_y == y1) {
+                SET_PATH_CONTINUES();
                 break;
             }
 
             e2 = err;
             if (e2 > -dx) {
                 err -= dy;
-                ssd1306_cursor_x += sx;
+                gfx_cursor_x += sx;
             }
             if (e2 < dy) {
                 err += dx;
-                ssd1306_cursor_y += sy;
+                gfx_cursor_y += sy;
             }
         }
     }
 }
 
-bool ssd1306_normalize_x(coord_x *pX1, coord_x *pX2) {
+bool gfx_normalize_x(coord_x *pX1, coord_x *pX2) {
     if (*pX1 > *pX2) {
         int16_t t = *pX1;
         *pX1 = *pX2;
@@ -467,7 +495,7 @@ bool ssd1306_normalize_x(coord_x *pX1, coord_x *pX2) {
     return false;
 }
 
-bool ssd1306_normalize_y(coord_y *pY1, coord_y *pY2) {
+bool gfx_normalize_y(coord_y *pY1, coord_y *pY2) {
     if (*pY1 > *pY2) {
         int8_t t = *pY1;
         *pY1 = *pY2;
@@ -477,75 +505,89 @@ bool ssd1306_normalize_y(coord_y *pY1, coord_y *pY2) {
     return false;
 }
 
-void ssd1306_double_line_to(coord_x x1, coord_y y1, int8_t xSpc, int8_t ySpc) {
-    coord_x x0 = ssd1306_cursor_x;
-    coord_y y0 = ssd1306_cursor_y;
+void gfx_double_line_to(coord_x x1, coord_y y1, int8_t xSpc, int8_t ySpc) {
+    coord_x x0 = gfx_cursor_x;
+    coord_y y0 = gfx_cursor_y;
 
-    ssd1306_line_to(x1, y1);
-    ssd1306_move_by(xSpc, ySpc);
-    ssd1306_line_to(x0 + xSpc, y0 + ySpc);
-    ssd1306_move_to(x1, y1);
+    gfx_line_to(x1, y1);
+    gfx_cursor_x += xSpc;
+    gfx_cursor_y += ySpc;
+    gfx_line_to(x0 + xSpc, y0 + ySpc);
+    gfx_cursor_x = x1;
+    gfx_cursor_y = y1;
+    SET_PATH_CONTINUES();
 }
 
-void ssd1306_double_hline_to(coord_x x1, int8_t ySpc) {
-    coord_x x0 = ssd1306_cursor_x;
-    coord_y y0 = ssd1306_cursor_y;
+void gfx_double_hline_to(coord_x x1, int8_t ySpc) {
+    coord_x x0 = gfx_cursor_x;
+    coord_y y0 = gfx_cursor_y;
 
-    ssd1306_hline_to(x1);
-    ssd1306_move_y_by(ySpc);
-    ssd1306_hline_to(x0);
-    ssd1306_move_to(x1, y0);
+    gfx_hline_to(x1);
+    gfx_cursor_y += ySpc;
+    gfx_hline_to(x0);
+    gfx_cursor_x = x1;
+    gfx_cursor_y = y0;
+    SET_PATH_CONTINUES();
 }
 
-void ssd1306_double_vline_to(coord_y y1, int8_t xSpc) {
-    coord_x x0 = ssd1306_cursor_x;
-    coord_y y0 = ssd1306_cursor_y;
+void gfx_double_vline_to(coord_y y1, int8_t xSpc) {
+    coord_x x0 = gfx_cursor_x;
+    coord_y y0 = gfx_cursor_y;
 
-    ssd1306_vline_to(y1);
-    ssd1306_move_x_by(xSpc);
-    ssd1306_vline_to(y0);
-    ssd1306_move_to(x0, y1);
+    gfx_vline_to(y1);
+    gfx_cursor_x += xSpc;
+    gfx_vline_to(y0);
+    gfx_cursor_x = x0;
+    gfx_cursor_y = y1;
+    SET_PATH_CONTINUES();
 }
 
-void ssd1306_vlines(coord_x x0, coord_y y0, coord_x x1, coord_y y1, color_t color) {
-    ssd1306_normalize_x(&x0, &x1);
-    ssd1306_normalize_y(&y0, &y1);
+void gfx_vlines(coord_x x0, coord_y y0, coord_x x1, coord_y y1, color_t color) {
+    gfx_normalize_x(&x0, &x1);
+    gfx_normalize_y(&y0, &y1);
 
     for (int i = x0; i <= x1; i++) {
-        ssd1306_vline(i, y0, y1, ssd1306_back_color);
+        gfx_vline(i, y0, y1, gfx_back_color);
     }
 }
 
-void ssd1306_hlines(coord_x x0, coord_y y0, coord_x x1, coord_y y1, color_t color) {
-#ifdef SSD1306_BIT_BLIT
-    ssd1306_vlines(x0, y0, x1, y1, color);
+void gfx_hlines(coord_x x0, coord_y y0, coord_x x1, coord_y y1, color_t color) {
+#ifdef GFX_BIT_BLIT
+    gfx_vlines(x0, y0, x1, y1, color);
 #else
     // with blt can swap and turn these into vlines
-    ssd1306_normalize_x(&x0, &x1);
-    ssd1306_normalize_y(&y0, &y1);
+    gfx_normalize_x(&x0, &x1);
+    gfx_normalize_y(&y0, &y1);
 
     for (int i = y0; i <= y1; i++) {
-        ssd1306_hline(x0, i, x1, ssd1306_back_color);
+        gfx_hline(x0, i, x1, gfx_back_color);
     }
 #endif
 }
 
 // draws a rectangle in given color
-void ssd1306_rect(coord_x x1, coord_y y1) {
-    coord_x x0 = ssd1306_cursor_x;
-    coord_y y0 = ssd1306_cursor_y;
+void gfx_rect(coord_x x1, coord_y y1) {
+    coord_x x0 = gfx_cursor_x;
+    coord_y y0 = gfx_cursor_y;
 
-    ssd1306_normalize_x(&x0, &x1);
-    ssd1306_normalize_y(&y0, &y1);
+    gfx_normalize_x(&x0, &x1);
+    gfx_normalize_y(&y0, &y1);
 
-    if (ssd1306_back_color != SSD1306_COLOR_NONE && x0 + 1 <= x1 - 1 && y0 + 1 <= y1 - 1) {
-        ssd1306_vlines(x0 + 1, y0 + 1, x1 - 1, y1 - 1, ssd1306_back_color);
+    if (gfx_back_color != GFX_COLOR_NONE && x0 + 1 <= x1 - 1 && y0 + 1 <= y1 - 1) {
+        gfx_vlines(x0 + 1, y0 + 1, x1 - 1, y1 - 1, gfx_back_color);
     }
 
-    ssd1306_hline_dashed(x0, y0, x1);
-    ssd1306_vline_dashed(x1, y0 + 1, y1);
-    ssd1306_hline_dashed(x1 - 1, y1, x0);
-    ssd1306_vline_dashed(x0, y1 - 1, y0 + 1);
+    if (gfx_have_line_pattern()) {
+        gfx_hline_dashed(x0, y0, x1);
+        gfx_vline_dashed(x1, y0 + 1, y1);
+        gfx_hline_dashed(x1 - 1, y1, x0);
+        gfx_vline_dashed(x0, y1 - 1, y0 + 1);
+    } else {
+        gfx_hline(x0, y0, x1, gfx_fore_color);
+        gfx_vline(x1, y0 + 1, y1, gfx_fore_color);
+        gfx_hline(x1 - 1, y1, x0, gfx_fore_color);
+        gfx_vline(x0, y1 - 1, y0 + 1, gfx_fore_color);
+    }
 }
 
 // Function for circle-generation
@@ -569,33 +611,33 @@ void ssd1306_rect(coord_x x1, coord_y y1) {
 // modified from https://www.geeksforgeeks.org/bresenhams-circle-drawing-algorithm/
 // to be able to use dashed line drawing
 
-void ssd1306_fill_circle_octants(coord_x cx, coord_y cy, coord_x x, coord_y y, uint8_t octants) {
+void gfx_fill_circle_octants(coord_x cx, coord_y cy, coord_x x, coord_y y, uint8_t octants) {
 //    printf("oct %d: x: %d, y: %d\n", octants, x, y);
-    if ((octants & SSD1306_OCT_1) && x < y + 1) ssd1306_vline(cx + x, cy - y + 1, cy - x - (x ? 0 : 1), ssd1306_back_color);
-    if ((octants & SSD1306_OCT_2) && x <= y - 1) ssd1306_hline(cx + y - 1, cy - x, cx + x + 1, ssd1306_back_color);
+    if ((octants & GFX_OCT_1) && x < y + 1) gfx_vline(cx + x, cy - y + 1, cy - x - (x ? 0 : 1), gfx_back_color);
+    if ((octants & GFX_OCT_2) && x <= y - 1) gfx_hline(cx + y - 1, cy - x, cx + x + 1, gfx_back_color);
 
-    if ((octants & SSD1306_OCT_3) && x <= y - 1) ssd1306_hline(cx + y - 1, cy + x, cx + x + (x ? 0 : 1), ssd1306_back_color);
-    if ((octants & SSD1306_OCT_4)) ssd1306_vline(cx + x, cy + y - 1, cy + x + 1, ssd1306_back_color);
+    if ((octants & GFX_OCT_3) && x <= y - 1) gfx_hline(cx + y - 1, cy + x, cx + x + (x ? 0 : 1), gfx_back_color);
+    if ((octants & GFX_OCT_4)) gfx_vline(cx + x, cy + y - 1, cy + x + 1, gfx_back_color);
 
-    if ((octants & SSD1306_OCT_5) && x < y + 1) ssd1306_vline(cx - x, cy + y - 1, cy + x + (x ? 0 : 1), ssd1306_back_color);
-    if ((octants & SSD1306_OCT_6)) ssd1306_hline(cx - y + 1, cy + x, cx - x - 1, ssd1306_back_color);
+    if ((octants & GFX_OCT_5) && x < y + 1) gfx_vline(cx - x, cy + y - 1, cy + x + (x ? 0 : 1), gfx_back_color);
+    if ((octants & GFX_OCT_6)) gfx_hline(cx - y + 1, cy + x, cx - x - 1, gfx_back_color);
 
-    if ((octants & SSD1306_OCT_7) && x <= y - 1) ssd1306_hline(cx - y + 1, cy - x, cx - x - (x ? 0 : 1), ssd1306_back_color);
-    if ((octants & SSD1306_OCT_8) && x < y + 1) ssd1306_vline(cx - x, cy - y + 1, cy - x - 1, ssd1306_back_color);
+    if ((octants & GFX_OCT_7) && x <= y - 1) gfx_hline(cx - y + 1, cy - x, cx - x - (x ? 0 : 1), gfx_back_color);
+    if ((octants & GFX_OCT_8) && x < y + 1) gfx_vline(cx - x, cy - y + 1, cy - x - 1, gfx_back_color);
 }
 
-void ssd1306_draw_circle_octants(coord_x cx, coord_y cy, coord_x x, coord_y y, uint8_t octs) {
-    if (octs & SSD1306_OCT_1) ssd1306_set_pixel(cx + x, cy - y, ssd1306_next_dash_color());
-    if (octs & SSD1306_OCT_2) ssd1306_set_pixel(cx + y, cy - x, ssd1306_next_dash_color());
+void gfx_draw_circle_octants(coord_x cx, coord_y cy, coord_x x, coord_y y, uint8_t octs) {
+    if (octs & GFX_OCT_1) gfx_set_pixel(cx + x, cy - y, gfx_next_dash_color());
+    if (octs & GFX_OCT_2) gfx_set_pixel(cx + y, cy - x, gfx_next_dash_color());
 
-    if (octs & SSD1306_OCT_3) ssd1306_set_pixel(cx + y, cy + x, ssd1306_next_dash_color());
-    if (octs & SSD1306_OCT_4) ssd1306_set_pixel(cx + x, cy + y, ssd1306_next_dash_color());
+    if (octs & GFX_OCT_3) gfx_set_pixel(cx + y, cy + x, gfx_next_dash_color());
+    if (octs & GFX_OCT_4) gfx_set_pixel(cx + x, cy + y, gfx_next_dash_color());
 
-    if (octs & SSD1306_OCT_5) ssd1306_set_pixel(cx - x, cy + y, ssd1306_next_dash_color());
-    if (octs & SSD1306_OCT_6) ssd1306_set_pixel(cx - y, cy + x, ssd1306_next_dash_color());
+    if (octs & GFX_OCT_5) gfx_set_pixel(cx - x, cy + y, gfx_next_dash_color());
+    if (octs & GFX_OCT_6) gfx_set_pixel(cx - y, cy + x, gfx_next_dash_color());
 
-    if (octs & SSD1306_OCT_7) ssd1306_set_pixel(cx - y, cy - x, ssd1306_next_dash_color());
-    if (octs & SSD1306_OCT_8) ssd1306_set_pixel(cx - x, cy - y, ssd1306_next_dash_color());
+    if (octs & GFX_OCT_7) gfx_set_pixel(cx - y, cy - x, gfx_next_dash_color());
+    if (octs & GFX_OCT_8) gfx_set_pixel(cx - x, cy - y, gfx_next_dash_color());
 }
 
 // here we can go inefficiently and draw 8 pixels and only processing one octant
@@ -604,9 +646,9 @@ void ssd1306_draw_circle_octants(coord_x cx, coord_y cy, coord_x x, coord_y y, u
 
 #define MAX_DECISIONS 64
 
-void ssd1306_circle_octants(int8_t r, uint8_t octants, fp_circle_octants drawOctants) {
-    coord_x xc = ssd1306_cursor_x;
-    coord_y yc = ssd1306_cursor_y;
+void gfx_circle_octants(int8_t r, uint8_t octants, fp_circle_octants drawOctants) {
+    coord_x xc = gfx_cursor_x;
+    coord_y yc = gfx_cursor_y;
     coord_x x;
     coord_y y;
     int16_t d;
@@ -618,13 +660,11 @@ void ssd1306_circle_octants(int8_t r, uint8_t octants, fp_circle_octants drawOct
     int16_t de = 0;
     uint8_t noSkip = 1;
 
-    ssd1306_flags &= ~SSD1306_FLAG_CONTINUED_PATH;
-
     // go through octants one at a time to preserve dash pattern
     for (uint8_t octant = 0x01; octant; octant <<= 1) {
         if (de == 0 || (octant & 0x55 & octants)) {
-            xc = ssd1306_cursor_x;
-            yc = ssd1306_cursor_y;
+            xc = gfx_cursor_x;
+            yc = gfx_cursor_y;
             x = 0;
             y = r;
             d = 3 - 2 * r;
@@ -691,123 +731,125 @@ void ssd1306_circle_octants(int8_t r, uint8_t octants, fp_circle_octants drawOct
 }
 
 // draws circle at x,y with given radius & color
-void ssd1306_circle(int8_t radius) {
+void gfx_circle(int8_t radius) {
     // first fill
     // then outline
     // do all 8 octants
-    if (ssd1306_back_color != SSD1306_COLOR_NONE) {
-        ssd1306_circle_octants(radius, 0xff, ssd1306_fill_circle_octants);
+    if (gfx_back_color != GFX_COLOR_NONE) {
+        gfx_circle_octants(radius, 0xff, gfx_fill_circle_octants);
 
-        if (ssd1306_back_color != SSD1306_COLOR_NONE) {
+        if (gfx_back_color != GFX_COLOR_NONE) {
             // draw the pixel at cx,cy
-            ssd1306_set_pixel(ssd1306_cursor_x, ssd1306_cursor_y, ssd1306_back_color);
+            gfx_set_pixel(gfx_cursor_x, gfx_cursor_y, gfx_back_color);
         }
     }
 
-    ssd1306_circle_octants(radius, 0xff, ssd1306_draw_circle_octants);
+    gfx_circle_octants(radius, 0xff, gfx_draw_circle_octants);
 }
 
 // draws a rounded rectangle with corner radius r.
 // coordinates: top left = x0,y0; bottom right = x1,y1
-void ssd1306_round_rect(coord_x x1, coord_y y1, int8_t r, uint8_t octants) {
-    bool doFill = ssd1306_back_color != SSD1306_COLOR_NONE;
+void gfx_round_rect(coord_x x1, coord_y y1, int8_t r, uint8_t octants) {
+    bool doFill = gfx_back_color != GFX_COLOR_NONE;
 
-    coord_x x0 = ssd1306_cursor_x;
-    coord_y y0 = ssd1306_cursor_y;
+    coord_x x0 = gfx_cursor_x;
+    coord_y y0 = gfx_cursor_y;
 
-    ssd1306_normalize_x(&x0, &x1);
-    ssd1306_normalize_y(&y0, &y1);
+    gfx_normalize_x(&x0, &x1);
+    gfx_normalize_y(&y0, &y1);
 
-    ssd1306_cursor_x += r; // x0+r
+    CLEAR_PATH_CONTINUES();
+
+    gfx_cursor_x += r; // x0+r
     coord_x x;
     coord_y y;
 
     x = x1 - r;
-    if (octants & SSD1306_OCT_1) {
-        ssd1306_hline_to(x); /* top side */
+    if (octants & GFX_OCT_1) {
+        gfx_hline_to(x); /* top side */
         if (doFill) {
-            ssd1306_vlines(x0 + r, y0 + 1, x1 - r - 1, y0 + r, ssd1306_back_color);
+            gfx_vlines(x0 + r, y0 + 1, x1 - r - 1, y0 + r, gfx_back_color);
             // DEBUG : remove
-            // ssd1306_display();
+            // gfx_display();
         }
     }
 
-    ssd1306_cursor_x = x;
-    ssd1306_cursor_y += r; // y0+r
-    if (octants & SSD1306_OCT_2) {
-        ssd1306_circle_octants(r, SSD1306_QUAD_1, ssd1306_draw_circle_octants); // upper right corner
-        if (doFill) ssd1306_circle_octants(r, SSD1306_QUAD_1, ssd1306_fill_circle_octants);
+    gfx_cursor_x = x;
+    gfx_cursor_y += r; // y0+r
+    if (octants & GFX_OCT_2) {
+        gfx_circle_octants(r, GFX_QUAD_1, gfx_draw_circle_octants); // upper right corner
+        if (doFill) gfx_circle_octants(r, GFX_QUAD_1, gfx_fill_circle_octants);
     }
 
-    ssd1306_cursor_x += r; // x1
+    gfx_cursor_x += r; // x1
     y = y1 - r;
-    if (octants & SSD1306_OCT_3) {
-        ssd1306_vline_to(y); // right side
+    if (octants & GFX_OCT_3) {
+        gfx_vline_to(y); // right side
         if (doFill) {
-            ssd1306_hlines(x1 - r, y0 + r, x1 - 1, y1 - r - 1, ssd1306_back_color);
+            gfx_hlines(x1 - r, y0 + r, x1 - 1, y1 - r - 1, gfx_back_color);
             // DEBUG : remove
-            // ssd1306_display();
+            // gfx_display();
         }
     }
 
-    ssd1306_cursor_y = y;
-    ssd1306_cursor_x -= r; // x1-r
-    if (octants & SSD1306_OCT_4) {
-        ssd1306_circle_octants(r, SSD1306_QUAD_2, ssd1306_draw_circle_octants); // lower right corner
-        if (doFill) ssd1306_circle_octants(r, SSD1306_QUAD_2, ssd1306_fill_circle_octants);
+    gfx_cursor_y = y;
+    gfx_cursor_x -= r; // x1-r
+    if (octants & GFX_OCT_4) {
+        gfx_circle_octants(r, GFX_QUAD_2, gfx_draw_circle_octants); // lower right corner
+        if (doFill) gfx_circle_octants(r, GFX_QUAD_2, gfx_fill_circle_octants);
     }
 
-    ssd1306_cursor_y += r; // y1
+    gfx_cursor_y += r; // y1
     x = x0 + r;
-    if (octants & SSD1306_OCT_5) {
-        ssd1306_hline_to(x); // bottom side
+    if (octants & GFX_OCT_5) {
+        gfx_hline_to(x); // bottom side
         if (doFill) {
-            ssd1306_vlines(x0 + r + 1, y1 - r, x1 - r, y1 - 1, ssd1306_back_color);
+            gfx_vlines(x0 + r + 1, y1 - r, x1 - r, y1 - 1, gfx_back_color);
             // DEBUG : remove
-            // ssd1306_display();
+            // gfx_display();
         }
     }
 
-    ssd1306_cursor_x = x;
-    ssd1306_cursor_y -= r; // y1-r
-    if (octants & SSD1306_OCT_6) {
-        ssd1306_circle_octants(r, SSD1306_QUAD_3, ssd1306_draw_circle_octants); // lower right corner
-        if (doFill) ssd1306_circle_octants(r, SSD1306_QUAD_3, ssd1306_fill_circle_octants);
+    gfx_cursor_x = x;
+    gfx_cursor_y -= r; // y1-r
+    if (octants & GFX_OCT_6) {
+        gfx_circle_octants(r, GFX_QUAD_3, gfx_draw_circle_octants); // lower right corner
+        if (doFill) gfx_circle_octants(r, GFX_QUAD_3, gfx_fill_circle_octants);
     }
 
-    ssd1306_cursor_x -= r; // x0
+    gfx_cursor_x -= r; // x0
     y = y0 + r;
-    if (octants & SSD1306_OCT_7) {
-        ssd1306_vline_to(y); // left side
+    if (octants & GFX_OCT_7) {
+        gfx_vline_to(y); // left side
         if (doFill) {
-            ssd1306_hlines(x0 + 1, y0 + r + 1, x0 + r, y1 - r, ssd1306_back_color);
+            gfx_hlines(x0 + 1, y0 + r + 1, x0 + r, y1 - r, gfx_back_color);
             // DEBUG : remove
-            // ssd1306_display();
+            // gfx_display();
         }
     }
 
-    ssd1306_cursor_y = y;
-    ssd1306_cursor_x += r; // x0+r
-    if (octants & SSD1306_OCT_8) {
+    gfx_cursor_y = y;
+    gfx_cursor_x += r; // x0+r
+    if (octants & GFX_OCT_8) {
         // upper right corner
-        ssd1306_circle_octants(r, SSD1306_QUAD_4, ssd1306_draw_circle_octants);
-        if (doFill) ssd1306_circle_octants(r, SSD1306_QUAD_4, ssd1306_fill_circle_octants);
+        gfx_circle_octants(r, GFX_QUAD_4, gfx_draw_circle_octants);
+        if (doFill) gfx_circle_octants(r, GFX_QUAD_4, gfx_fill_circle_octants);
     }
 
     if (doFill
-        && ((octants & (SSD1306_OCT_1 | SSD1306_OCT_3 | SSD1306_OCT_5 | SSD1306_OCT_7)) == (SSD1306_OCT_1 | SSD1306_OCT_3 | SSD1306_OCT_5 | SSD1306_OCT_7))) {
+        && ((octants & (GFX_OCT_1 | GFX_OCT_3 | GFX_OCT_5 | GFX_OCT_7)) == (GFX_OCT_1 | GFX_OCT_3 | GFX_OCT_5 | GFX_OCT_7))) {
         // fill the center
-        ssd1306_vlines(x0 + r + 1, y0 + r + 1, x1 - r - 1, y1 - r - 1, ssd1306_back_color);
+        gfx_vlines(x0 + r + 1, y0 + r + 1, x1 - r - 1, y1 - r - 1, gfx_back_color);
         // DEBUG : remove
-        // ssd1306_display();
+        // gfx_display();
     }
 
-    ssd1306_cursor_x -= r; // x0
-    ssd1306_cursor_y -= r; // y0
+    gfx_cursor_x -= r; // x0
+    gfx_cursor_y -= r; // y0
 }
 
-void ssd1306_bitmap(const uint8_t bitmap[], uint8_t w, uint8_t h) {
-    coord_y y = ssd1306_cursor_y;
+void gfx_bitmap(const uint8_t bitmap[], uint8_t w, uint8_t h) {
+    coord_y y = gfx_cursor_y;
 
     uint8_t byteWidth = (w + 7) / 8; // Bitmap scanline pad = whole byte
     uint8_t byte = 0;
@@ -817,20 +859,20 @@ void ssd1306_bitmap(const uint8_t bitmap[], uint8_t w, uint8_t h) {
             if (i & 7) byte <<= 1;
             else byte = pgm_read_byte(&bitmap[j * byteWidth + i / 8]);
 
-            color_t color = (byte & 0x80) ? ssd1306_fore_color : ssd1306_back_color;
-            if (color != SSD1306_COLOR_NONE) {
-                ssd1306_set_pixel(ssd1306_cursor_x + i, y, color);
+            color_t color = (byte & 0x80) ? gfx_fore_color : gfx_back_color;
+            if (color != GFX_COLOR_NONE) {
+                gfx_set_pixel(gfx_cursor_x + i, y, color);
             }
         }
     }
 }
 
-#ifdef SSD1306_FANCY
+#if 0
 // TEST: not done or debugged
 // draws an ellipse of given width & height
 // two-part Bresenham method
 // note: slight discontinuity between parts on some (narrow) ellipses.
-void ssd1306_ellipse(int cx, int cy, int width, int height, color_t color) {
+void gfx_ellipse(int cx, int cy, int width, int height, color_t color) {
     int a = width >> 1, b = height >> 1;
     int x = 0, y = b;
     long a2 = a * a * 2;
@@ -838,10 +880,10 @@ void ssd1306_ellipse(int cx, int cy, int width, int height, color_t color) {
     long error = (long) a * a * b;
     long stopY = 0, stopX = a2 * b;
     while (stopY <= stopX) {
-        ssd1306_setPixel(cx + x, cy + y, color);
-        ssd1306_setPixel(cx + x, cy - y, color);
-        ssd1306_setPixel(cx - x, cy + y, color);
-        ssd1306_setPixel(cx - x, cy - y, color);
+        gfx_setPixel(cx + x, cy + y, color);
+        gfx_setPixel(cx + x, cy - y, color);
+        gfx_setPixel(cx - x, cy + y, color);
+        gfx_setPixel(cx - x, cy - y, color);
         x++;
         error -= b2 * (x - 1);
         stopY += b2;
@@ -857,10 +899,10 @@ void ssd1306_ellipse(int cx, int cy, int width, int height, color_t color) {
     stopY = a * b2;
     stopX = 0;
     while (stopY >= stopX) {
-        ssd1306_setPixel(cx + x, cy + y, color);
-        ssd1306_setPixel(cx + x, cy - y, color);
-        ssd1306_setPixel(cx - x, cy + y, color);
-        ssd1306_setPixel(cx - x, cy - y, color);
+        gfx_setPixel(cx + x, cy + y, color);
+        gfx_setPixel(cx + x, cy - y, color);
+        gfx_setPixel(cx - x, cy + y, color);
+        gfx_setPixel(cx - x, cy - y, color);
         y++;
         error -= a2 * (y - 1);
         stopX += a2;
@@ -873,7 +915,7 @@ void ssd1306_ellipse(int cx, int cy, int width, int height, color_t color) {
 }
 
 // draws a filled ellipse of given width & height
-void ssd1306_fillEllipse(int cx, int cy, int width, int height, color_t color) {
+void gfx_fillEllipse(int cx, int cy, int width, int height, color_t color) {
     int a = width >> 1, b = height >> 1; // get x & y radii
     int x1, x0 = a, y = 1;
     int dx = 0;
@@ -902,138 +944,68 @@ void ssd1306_fillEllipse(int cx, int cy, int width, int height, color_t color) {
 // Each ASCII character is 5x7, with one pixel space between characters
 // So, character width = 6 pixels & character height = 8 pixels. //
 
-void ssd1306_update_char_size() {
-    ssd1306_char_y_size = ssd1306_text_flags & SSD1306_TEXT_FLAG_DOUBLE_HEIGHT ? CHAR_HEIGHT * 2 : CHAR_HEIGHT;
-    ssd1306_char_x_size = ssd1306_text_flags & SSD1306_TEXT_FLAG_DOUBLE_WIDTH ? CHAR_WIDTH * 2 : CHAR_WIDTH;
+void gfx_update_char_size() {
+    gfx_char_y_size = gfx_text_flags & GFX_TEXT_FLAG_DOUBLE_HEIGHT ? CHAR_HEIGHT * 2 : CHAR_HEIGHT;
+    gfx_char_x_size = gfx_text_flags & GFX_TEXT_FLAG_DOUBLE_WIDTH ? CHAR_WIDTH * 2 : CHAR_WIDTH;
 
-#ifdef SSD1306_SMALL_FONT
-    if (ssd1306_text_flags & SSD1306_TEXT_FLAG_SMALL_FONT) {
-        ssd1306_char_x_size = SSD1306_SMALL_CHAR_WIDTH;
-        ssd1306_char_y_size = SSD1306_SMALL_CHAR_HEIGHT;
+#ifdef GFX_SMALL_FONT
+    if (gfx_text_flags & GFX_TEXT_FLAG_SMALL_FONT) {
+        gfx_char_x_size = GFX_SMALL_CHAR_WIDTH;
+        gfx_char_y_size = GFX_SMALL_CHAR_HEIGHT;
     }
 #endif
 }
 
-void ssd1306_set_text_size_flags(uint8_t flags) {
-    flags &= SSD1306_TEXT_FLAG_CHAR_SIZE;
+void gfx_set_text_size_flags(uint8_t flags) {
+    flags &= GFX_TEXT_FLAG_CHAR_SIZE;
 
-    if (flags != (ssd1306_text_flags & SSD1306_TEXT_FLAG_CHAR_SIZE)) {
+    if (flags != (gfx_text_flags & GFX_TEXT_FLAG_CHAR_SIZE)) {
         // size changing
-        ssd1306_clear_text_flags(SSD1306_TEXT_FLAG_CHAR_SIZE);
-        ssd1306_set_text_flags(flags);
+        gfx_clear_text_flags(GFX_TEXT_FLAG_CHAR_SIZE);
+        gfx_set_text_flags(flags);
     }
 }
 
-void ssd1306_changing_text_flags(uint8_t flags) {
-    if (flags & (SSD1306_TEXT_FLAG_WRAP | SSD1306_TEXT_FLAG_WRAP_ON_SPC | SSD1306_TEXT_FLAG_BORDER | SSD1306_TEXT_FLAG_CHAR_SIZE)) {
-        // flush any chars to be printed with space wrapping
-        ssd1306_flush_wrap_chars();
-    }
-}
-
-void ssd1306_set_text_flags(uint8_t flags) {
-    ssd1306_changing_text_flags(flags);
-
-    if (flags & SSD1306_TEXT_FLAG_BORDER) {
-        flags |= SSD1306_TEXT_FLAG_BORDER_CHAR | SSD1306_TEXT_FLAG_BORDER | SSD1306_TEXT_FLAG_BORDER_LINE;
+void gfx_set_text_flags(uint8_t flags) {
+    if (flags & GFX_TEXT_FLAG_BORDER) {
+        gfx_flags |= GFX_FLAG_BORDER_CHAR | GFX_FLAG_BORDER_LINE;
     }
 
-    if (flags & SSD1306_TEXT_FLAG_WRAP_ON_SPC) {
-        flags |= SSD1306_TEXT_FLAG_WRAP;
+    if (flags & GFX_TEXT_FLAG_DOUBLE_SIZE) {
+        flags &= ~GFX_TEXT_FLAG_SMALL_FONT;
     }
 
-    if (flags & SSD1306_TEXT_FLAG_DOUBLE_SIZE) {
-        flags &= ~SSD1306_TEXT_FLAG_SMALL_FONT;
+    gfx_text_flags |= flags;
+    gfx_update_char_size();
+}
+
+void gfx_clear_text_flags(uint8_t flags) {
+    if (flags & GFX_TEXT_FLAG_BORDER) {
+        gfx_flags &= ~(GFX_FLAG_BORDER_CHAR | GFX_FLAG_BORDER_LINE);
     }
 
-    ssd1306_text_flags |= flags;
-    ssd1306_update_char_size();
+    gfx_text_flags &= ~flags;
+    gfx_update_char_size();
 }
 
-void ssd1306_clear_text_flags(uint8_t flags) {
-    ssd1306_changing_text_flags(flags);
-
-    if (flags & SSD1306_TEXT_FLAG_BORDER) {
-        flags |= SSD1306_TEXT_FLAG_BORDER_CHAR | SSD1306_TEXT_FLAG_BORDER | SSD1306_TEXT_FLAG_BORDER_LINE;
-    }
-
-    if (flags & SSD1306_TEXT_FLAG_WRAP) {
-        flags |= SSD1306_TEXT_FLAG_WRAP_ON_SPC;
-    }
-
-    ssd1306_text_flags &= ~flags;
-    ssd1306_update_char_size();
+void gfx_set_text_col_row(int8_t x, coord_y y) {
+    gfx_cursor_x = x * gfx_char_x_size;
+    gfx_cursor_y = y * gfx_char_y_size;
 }
 
-void ssd1306_set_text_col_row(int8_t x, coord_y y) {
-    ssd1306_cursor_x = x * ssd1306_char_x_size;
-    ssd1306_cursor_y = y * ssd1306_char_y_size;
+bool gfx_is_char_visible() {
+    return !(gfx_cursor_x + gfx_char_x_size <= 0 || gfx_cursor_x >= DISPLAY_XSIZE || gfx_cursor_y + gfx_char_y_size <= 0 ||
+             gfx_cursor_y >= DISPLAY_YSIZE);
 }
 
-bool ssd1306_is_char_visible() {
-    return !(ssd1306_cursor_x + ssd1306_char_x_size <= 0 || ssd1306_cursor_x >= DISPLAY_XSIZE || ssd1306_cursor_y + ssd1306_char_y_size <= 0 ||
-             ssd1306_cursor_y >= DISPLAY_YSIZE);
+bool gfx_is_char_clipped() {
+    return gfx_is_char_visible()
+           && (gfx_cursor_x < 0 || gfx_cursor_x + gfx_char_x_size > DISPLAY_XSIZE || gfx_cursor_y < 0 || gfx_cursor_y + gfx_char_y_size > DISPLAY_YSIZE);
 }
 
-bool ssd1306_is_char_clipped() {
-    return ssd1306_is_char_visible()
-           && (ssd1306_cursor_x < 0 || ssd1306_cursor_x + ssd1306_char_x_size > DISPLAY_XSIZE || ssd1306_cursor_y < 0 || ssd1306_cursor_y + ssd1306_char_y_size > DISPLAY_YSIZE);
-}
+#ifdef GFX_HAVE_ALT_FONTS
 
-void ssd1306_set_colors(color_t fg, color_t bg) {
-    ssd1306_flush_wrap_chars();
-    ssd1306_fore_color = fg;
-    ssd1306_back_color = bg;
-}
-
-void ssd1306_set_pattern_colors(color_t fg, color_t bg, color_t gp) {
-    ssd1306_flush_wrap_chars();
-    ssd1306_fore_color = fg;
-    ssd1306_back_color = bg;
-    ssd1306_gap_color = gp;
-}
-
-void ssd1306_move_to(coord_x x, coord_y y) {
-    ssd1306_flush_wrap_chars();
-    ssd1306_cursor_x = x;
-    ssd1306_cursor_y = y;
-    ssd1306_flags &= ~SSD1306_FLAG_CONTINUED_PATH;
-}
-
-void ssd1306_move_x_to(coord_x x) {
-    ssd1306_flush_wrap_chars();
-    ssd1306_cursor_x = x;
-    ssd1306_flags &= ~SSD1306_FLAG_CONTINUED_PATH;
-}
-
-void ssd1306_move_y_to(coord_y y) {
-    ssd1306_flush_wrap_chars();
-    ssd1306_cursor_y = y;
-    ssd1306_flags &= ~SSD1306_FLAG_CONTINUED_PATH;
-}
-
-void ssd1306_move_by(coord_x x, coord_y y) {
-    ssd1306_flush_wrap_chars();
-    ssd1306_cursor_x += x;
-    ssd1306_cursor_y += y;
-    ssd1306_flags &= ~SSD1306_FLAG_CONTINUED_PATH;
-}
-
-void ssd1306_move_x_by(coord_x x) {
-    ssd1306_flush_wrap_chars();
-    ssd1306_cursor_x += x;
-    ssd1306_flags &= ~SSD1306_FLAG_CONTINUED_PATH;
-}
-
-void ssd1306_move_y_by(coord_y y) {
-    ssd1306_flush_wrap_chars();
-    ssd1306_cursor_y += y;
-    ssd1306_flags &= ~SSD1306_FLAG_CONTINUED_PATH;
-}
-
-#ifdef SSD1306_HAVE_ALT_FONTS
-
-bool ssd1306_findSubstitutedChar(
+bool gfx_findSubstitutedChar(
         uint8_t ch,
         const char *pChars,
         uint8_t xPixels,
@@ -1068,41 +1040,41 @@ bool ssd1306_findSubstitutedChar(
 
 #endif
 
-#ifdef SSD1306_BIT_BLIT
+#ifdef GFX_BIT_BLIT
 
-#define SSD1306_BITBLIT_OP_DST_NONE     0x00  // nop
-#define SSD1306_BITBLIT_OP_DST_CLEAR    0x01  // dst = 0, ie black
-#define SSD1306_BITBLIT_OP_DST_SET      0x02  // dst = 1, ie white
-#define SSD1306_BITBLIT_OP_DST_INVERT   0x03  // dst = ~dst, invert
+#define GFX_BITBLIT_OP_DST_NONE     0x00  // nop
+#define GFX_BITBLIT_OP_DST_CLEAR    0x01  // dst = 0, ie black
+#define GFX_BITBLIT_OP_DST_SET      0x02  // dst = 1, ie white
+#define GFX_BITBLIT_OP_DST_INVERT   0x03  // dst = ~dst, invert
 
-#define SSD1306_BITBLIT_OP_DST          0x03  // destination op
+#define GFX_BITBLIT_OP_DST          0x03  // destination op
 
-#define SSD1306_BITBLIT_OP_NONE         (0x00 << 2)  // noop
-#define SSD1306_BITBLIT_OP_OR           (0x01 << 2)  // dst |= src
-#define SSD1306_BITBLIT_OP_AND          (0x02 << 2)  // dst &= src
-#define SSD1306_BITBLIT_OP_OR_NOT       (0x03 << 2)  // dst |= ~src
-#define SSD1306_BITBLIT_OP_AND_NOT      (0x04 << 2)  // dst &= ~src
-#define SSD1306_BITBLIT_OP_XOR          (0x05 << 2)  // dst ^= src
+#define GFX_BITBLIT_OP_NONE         (0x00 << 2)  // noop
+#define GFX_BITBLIT_OP_OR           (0x01 << 2)  // dst |= src
+#define GFX_BITBLIT_OP_AND          (0x02 << 2)  // dst &= src
+#define GFX_BITBLIT_OP_OR_NOT       (0x03 << 2)  // dst |= ~src
+#define GFX_BITBLIT_OP_AND_NOT      (0x04 << 2)  // dst &= ~src
+#define GFX_BITBLIT_OP_XOR          (0x05 << 2)  // dst ^= src
 
-#define SSD1306_BITBLIT_OP              (0x07 << 2)  // op
+#define GFX_BITBLIT_OP              (0x07 << 2)  // op
 
 static const uint8_t colorOnColorToOp[] PROGMEM = {
-        (SSD1306_BITBLIT_OP_DST_NONE | SSD1306_BITBLIT_OP_NONE),        // NONE on NONE
-        (SSD1306_BITBLIT_OP_DST_NONE | SSD1306_BITBLIT_OP_AND),         // NONE on BLACK
-        (SSD1306_BITBLIT_OP_DST_NONE | SSD1306_BITBLIT_OP_OR_NOT),      // NONE on WHITE
-        (SSD1306_BITBLIT_OP_DST_INVERT | SSD1306_BITBLIT_OP_XOR),       // NONE on INVERT
-        (SSD1306_BITBLIT_OP_DST_NONE | SSD1306_BITBLIT_OP_AND_NOT),     // BLACK on NONE
-        (SSD1306_BITBLIT_OP_DST_CLEAR | SSD1306_BITBLIT_OP_NONE),       // BLACK on BLACK
-        (SSD1306_BITBLIT_OP_DST_CLEAR | SSD1306_BITBLIT_OP_OR_NOT),     // BLACK on WHITE
-        (SSD1306_BITBLIT_OP_DST_INVERT | SSD1306_BITBLIT_OP_AND_NOT),   // BLACK on INVERT
-        (SSD1306_BITBLIT_OP_DST_NONE | SSD1306_BITBLIT_OP_OR),          // WHITE on NONE
-        (SSD1306_BITBLIT_OP_DST_CLEAR | SSD1306_BITBLIT_OP_OR),         // WHITE on BLACK
-        (SSD1306_BITBLIT_OP_DST_SET | SSD1306_BITBLIT_OP_NONE),         // WHITE on WHITE
-        (SSD1306_BITBLIT_OP_DST_INVERT | SSD1306_BITBLIT_OP_OR),        // WHITE on INVERT
-        (SSD1306_BITBLIT_OP_DST_NONE | SSD1306_BITBLIT_OP_XOR),         // INVERT on NONE
-        (SSD1306_BITBLIT_OP_DST_INVERT | SSD1306_BITBLIT_OP_AND),       // INVERT on BLACK
-        (SSD1306_BITBLIT_OP_DST_INVERT | SSD1306_BITBLIT_OP_OR_NOT),    // INVERT on WHITE
-        (SSD1306_BITBLIT_OP_DST_INVERT | SSD1306_BITBLIT_OP_NONE),      // INVERT on INVERT
+        (GFX_BITBLIT_OP_DST_NONE | GFX_BITBLIT_OP_NONE),        // NONE on NONE
+        (GFX_BITBLIT_OP_DST_NONE | GFX_BITBLIT_OP_AND),         // NONE on BLACK
+        (GFX_BITBLIT_OP_DST_NONE | GFX_BITBLIT_OP_OR_NOT),      // NONE on WHITE
+        (GFX_BITBLIT_OP_DST_INVERT | GFX_BITBLIT_OP_XOR),       // NONE on INVERT
+        (GFX_BITBLIT_OP_DST_NONE | GFX_BITBLIT_OP_AND_NOT),     // BLACK on NONE
+        (GFX_BITBLIT_OP_DST_CLEAR | GFX_BITBLIT_OP_NONE),       // BLACK on BLACK
+        (GFX_BITBLIT_OP_DST_CLEAR | GFX_BITBLIT_OP_OR_NOT),     // BLACK on WHITE
+        (GFX_BITBLIT_OP_DST_INVERT | GFX_BITBLIT_OP_AND_NOT),   // BLACK on INVERT
+        (GFX_BITBLIT_OP_DST_NONE | GFX_BITBLIT_OP_OR),          // WHITE on NONE
+        (GFX_BITBLIT_OP_DST_CLEAR | GFX_BITBLIT_OP_OR),         // WHITE on BLACK
+        (GFX_BITBLIT_OP_DST_SET | GFX_BITBLIT_OP_NONE),         // WHITE on WHITE
+        (GFX_BITBLIT_OP_DST_INVERT | GFX_BITBLIT_OP_OR),        // WHITE on INVERT
+        (GFX_BITBLIT_OP_DST_NONE | GFX_BITBLIT_OP_XOR),         // INVERT on NONE
+        (GFX_BITBLIT_OP_DST_INVERT | GFX_BITBLIT_OP_AND),       // INVERT on BLACK
+        (GFX_BITBLIT_OP_DST_INVERT | GFX_BITBLIT_OP_OR_NOT),    // INVERT on WHITE
+        (GFX_BITBLIT_OP_DST_INVERT | GFX_BITBLIT_OP_NONE),      // INVERT on INVERT
 };
 
 static uint8_t blt_op;
@@ -1115,43 +1087,43 @@ static const uint8_t *blt_p;
 
 static void bitBlt() {
     for (uint8_t x = blt_x0; x < blt_x1; x++, blt_p++) {
-        switch (blt_op & SSD1306_BITBLIT_OP_DST) {
-            case SSD1306_BITBLIT_OP_DST_CLEAR :
-                ssd1306_display_buffer[blt_yPage][x] &= ~blt_mask;
+        switch (blt_op & GFX_BITBLIT_OP_DST) {
+            case GFX_BITBLIT_OP_DST_CLEAR :
+                gfx_display_buffer[blt_yPage][x] &= ~blt_mask;
                 break;
 
-            case SSD1306_BITBLIT_OP_DST_SET :
-                ssd1306_display_buffer[blt_yPage][x] |= blt_mask;
+            case GFX_BITBLIT_OP_DST_SET :
+                gfx_display_buffer[blt_yPage][x] |= blt_mask;
                 break;
 
-            case SSD1306_BITBLIT_OP_DST_INVERT :
-                ssd1306_display_buffer[blt_yPage][x] ^= blt_mask;
+            case GFX_BITBLIT_OP_DST_INVERT :
+                gfx_display_buffer[blt_yPage][x] ^= blt_mask;
                 break;
 
-            case SSD1306_BITBLIT_OP_DST_NONE :
+            case GFX_BITBLIT_OP_DST_NONE :
             default:
                 break;
         }
 
         uint8_t src = blt_yOffset < 0 ? *blt_p >> -blt_yOffset : *blt_p << blt_yOffset;
-        switch (blt_op & SSD1306_BITBLIT_OP) {
-            case SSD1306_BITBLIT_OP_OR :
-                ssd1306_display_buffer[blt_yPage][x] |= src & blt_mask;
+        switch (blt_op & GFX_BITBLIT_OP) {
+            case GFX_BITBLIT_OP_OR :
+                gfx_display_buffer[blt_yPage][x] |= src & blt_mask;
                 break;
-            case SSD1306_BITBLIT_OP_AND :
-                ssd1306_display_buffer[blt_yPage][x] &= src | ~blt_mask;
+            case GFX_BITBLIT_OP_AND :
+                gfx_display_buffer[blt_yPage][x] &= src | ~blt_mask;
                 break;
-            case SSD1306_BITBLIT_OP_OR_NOT :
-                ssd1306_display_buffer[blt_yPage][x] |= (~src) & blt_mask;
+            case GFX_BITBLIT_OP_OR_NOT :
+                gfx_display_buffer[blt_yPage][x] |= (~src) & blt_mask;
                 break;
-            case SSD1306_BITBLIT_OP_AND_NOT :
-                ssd1306_display_buffer[blt_yPage][x] &= (~src) | ~blt_mask;
+            case GFX_BITBLIT_OP_AND_NOT :
+                gfx_display_buffer[blt_yPage][x] &= (~src) | ~blt_mask;
                 break;
-            case SSD1306_BITBLIT_OP_XOR :
-                ssd1306_display_buffer[blt_yPage][x] ^= src & blt_mask;
+            case GFX_BITBLIT_OP_XOR :
+                gfx_display_buffer[blt_yPage][x] ^= src & blt_mask;
                 break;
 
-            case SSD1306_BITBLIT_OP_NONE :
+            case GFX_BITBLIT_OP_NONE :
             default:
                 break;
         }
@@ -1159,8 +1131,8 @@ static void bitBlt() {
 }
 
 // bit blit maximum 8 rows of data to display buffer
-void ssd1306_bitBlit(const uint8_t *pData, uint8_t xSize, uint8_t ySize) {
-    coord_x x0 = ssd1306_cursor_x;
+void gfx_bitBlit(const uint8_t *pData, uint8_t xSize, uint8_t ySize) {
+    coord_x x0 = gfx_cursor_x;
 
     if (x0 < 0) {
         pData += -x0;
@@ -1169,7 +1141,7 @@ void ssd1306_bitBlit(const uint8_t *pData, uint8_t xSize, uint8_t ySize) {
     }
     blt_x0 = x0;
 
-    coord_y y0 = ssd1306_cursor_y;
+    coord_y y0 = gfx_cursor_y;
     int8_t blt_yPreOffset = 0;
 
     if (y0 < 0) {
@@ -1188,7 +1160,7 @@ void ssd1306_bitBlit(const uint8_t *pData, uint8_t xSize, uint8_t ySize) {
     }
 
     blt_x1 = x0 + xSize;
-    blt_op = pgm_read_byte(colorOnColorToOp + COLOR_ON_COLOR(ssd1306_fore_color, ssd1306_back_color));
+    blt_op = pgm_read_byte(colorOnColorToOp + COLOR_ON_COLOR(gfx_fore_color, gfx_back_color));
     blt_p = pData;
 
     if (blt_x1 > DISPLAY_XSIZE) blt_x1 = DISPLAY_XSIZE;
@@ -1209,14 +1181,14 @@ void ssd1306_bitBlit(const uint8_t *pData, uint8_t xSize, uint8_t ySize) {
     }
 }
 
-void ssd1306_double_width(uint8_t *pData, uint8_t xSize) {
+void gfx_double_width(uint8_t *pData, uint8_t xSize) {
     for (uint8_t s = 0, *ps = pData + xSize, *pd = ps + xSize; s < xSize; s++) {
         *--pd = *--ps;
         *--pd = *ps;
     }
 }
 
-uint16_t ssd1306_double_bits(uint8_t b) {
+uint16_t gfx_double_bits(uint8_t b) {
     uint16_t b1;
     uint16_t b2;
 
@@ -1238,18 +1210,18 @@ uint16_t ssd1306_double_bits(uint8_t b) {
     return b1;
 }
 
-void ssd1306_double_height(uint8_t *pData, uint8_t xSize) {
+void gfx_double_height(uint8_t *pData, uint8_t xSize) {
     for (uint8_t s = 0, *ps = pData, *pd = pData + xSize; s < xSize; s++) {
         uint16_t b1;
 
-        b1 = ssd1306_double_bits(*ps);
+        b1 = gfx_double_bits(*ps);
         *ps++ = b1 & 0xff;
         *pd++ = b1 >> 8;
     }
 }
 
-// ssd1306_print ch to display X,Y coordinates using ASCII 5x7 font
-bool ssd1306_put_ch(char ch) {
+// gfx_print ch to display X,Y coordinates using ASCII 5x7 font
+bool gfx_put_ch(char ch) {
     bool retVal = false;
 #ifdef SERIAL_DEBUG_GFX_STATS
     uint32_t start = micros();
@@ -1257,35 +1229,35 @@ bool ssd1306_put_ch(char ch) {
 
     if (ch == '\n') {
         // go to next line and left margin
-        ssd1306_new_line();
-    } else if (ch >= 32 && ssd1306_is_char_visible() && (ssd1306_fore_color != SSD1306_COLOR_NONE || ssd1306_back_color != SSD1306_COLOR_NONE)) {
-        if (!(ssd1306_flags & SSD1306_FLAG_SIMULATED_PRINT)) {
-            uint8_t textSize = ssd1306_text_flags & SSD1306_TEXT_FLAG_DOUBLE_SIZE;
-            uint8_t xPixels = SSD1306_FONT_X_PIXELS;
-            uint8_t yPixels = SSD1306_FONT_Y_PIXELS;
+        gfx_new_line();
+    } else if (ch >= 32 && gfx_is_char_visible() && (gfx_fore_color != GFX_COLOR_NONE || gfx_back_color != GFX_COLOR_NONE)) {
+        if (!(gfx_flags & GFX_FLAG_SIMULATED_PRINT)) {
+            uint8_t textSize = gfx_text_flags & GFX_TEXT_FLAG_DOUBLE_SIZE;
+            uint8_t xPixels = GFX_FONT_X_PIXELS;
+            uint8_t yPixels = GFX_FONT_Y_PIXELS;
             uint8_t charBits[20];
 
-#ifndef SSD1306_HAVE_ALT_FONTS
+#ifndef GFX_HAVE_ALT_FONTS
             *((uint32_t *) (charBits)) = pgm_read_dword((const char *) FONT_CHARS[ch - 32]);
             charBits[4] = pgm_read_byte((const char *) FONT_CHARS[ch - 32] + 4);
 #else
             const char *pBits = (const char *) FONT_CHARS[ch - 32];
 
-#ifdef SSD1306_LARGE_FONT
+#ifdef GFX_LARGE_FONT
             // see if we have replacement
-            if (textSize == SSD1306_TEXT_FLAG_DOUBLE_SIZE && ssd1306_findSubstitutedChar(ch, (PGM_P) LARGE_CHARS, SSD1306_LARGE_X_PIXELS, SSD1306_LARGE_Y_PIXELS, LARGE_CHAR_MAP, LARGE_CHAR_SET, &pBits)) {
+            if (textSize == GFX_TEXT_FLAG_DOUBLE_SIZE && gfx_findSubstitutedChar(ch, (PGM_P) LARGE_CHARS, GFX_LARGE_X_PIXELS, GFX_LARGE_Y_PIXELS, LARGE_CHAR_MAP, LARGE_CHAR_SET, &pBits)) {
                 textSize = 0;
-                xPixels = SSD1306_LARGE_X_PIXELS;
-                yPixels = SSD1306_LARGE_Y_PIXELS;
+                xPixels = GFX_LARGE_X_PIXELS;
+                yPixels = GFX_LARGE_Y_PIXELS;
             }
 #endif
 
-#ifdef SSD1306_SMALL_FONT
+#ifdef GFX_SMALL_FONT
             // see if we have replacement
-            if ((ssd1306_text_flags & SSD1306_TEXT_FLAG_SMALL_FONT) && ssd1306_findSubstitutedChar(ch, (PGM_P) SMALL_CHARS, SSD1306_SMALL_X_PIXELS, SSD1306_SMALL_Y_PIXELS, SMALL_CHAR_MAP, SMALL_CHAR_SET, &pBits)) {
+            if ((gfx_text_flags & GFX_TEXT_FLAG_SMALL_FONT) && gfx_findSubstitutedChar(ch, (PGM_P) SMALL_CHARS, GFX_SMALL_X_PIXELS, GFX_SMALL_Y_PIXELS, SMALL_CHAR_MAP, SMALL_CHAR_SET, &pBits)) {
                 textSize = 0;
-                xPixels = SSD1306_SMALL_X_PIXELS;
-                yPixels = SSD1306_SMALL_Y_PIXELS;
+                xPixels = GFX_SMALL_X_PIXELS;
+                yPixels = GFX_SMALL_Y_PIXELS;
             }
 #endif
             *((uint32_t *) (charBits)) = pgm_read_dword(pBits);
@@ -1300,51 +1272,51 @@ bool ssd1306_put_ch(char ch) {
 
 #endif
             // may need to double some dimension
-            if (textSize & SSD1306_TEXT_FLAG_DOUBLE_WIDTH) {
-                ssd1306_double_width(charBits, xPixels);
+            if (textSize & GFX_TEXT_FLAG_DOUBLE_WIDTH) {
+                gfx_double_width(charBits, xPixels);
                 xPixels *= 2;
             }
 
-            if (textSize & SSD1306_TEXT_FLAG_DOUBLE_HEIGHT) {
+            if (textSize & GFX_TEXT_FLAG_DOUBLE_HEIGHT) {
                 // double height or double size, first double the height, then double width if double size
-                ssd1306_double_height(charBits, xPixels);
+                gfx_double_height(charBits, xPixels);
                 yPixels *= 2;
             }
 
-            ssd1306_bitBlit(charBits, xPixels, yPixels > 8 ? 8 : yPixels);
+            gfx_bitBlit(charBits, xPixels, yPixels > 8 ? 8 : yPixels);
 
             if (yPixels > 8) {
-                ssd1306_cursor_y += 8;
-                if (ssd1306_cursor_y < DISPLAY_YSIZE) {
-                    ssd1306_bitBlit(charBits + xPixels, xPixels, yPixels - 8);
+                gfx_cursor_y += 8;
+                if (gfx_cursor_y < DISPLAY_YSIZE) {
+                    gfx_bitBlit(charBits + xPixels, xPixels, yPixels - 8);
                 }
-                ssd1306_cursor_y -= 8;
+                gfx_cursor_y -= 8;
             }
 
             // FIX: these overlap between lines, issue if using invert
-            if (ssd1306_back_color != SSD1306_COLOR_NONE) {
-                if (ssd1306_text_flags & SSD1306_TEXT_FLAG_BORDER_CHAR) {
+            if (gfx_back_color != GFX_COLOR_NONE) {
+                if (gfx_flags & GFX_FLAG_BORDER_CHAR) {
                     // add left border
-                    ssd1306_vline(ssd1306_cursor_x - 1, ssd1306_cursor_y - 1, ssd1306_cursor_y + ssd1306_char_y_size - 1, ssd1306_back_color);
-                    if (ssd1306_text_flags & SSD1306_TEXT_FLAG_DOUBLE_WIDTH) {
-                        ssd1306_vline(ssd1306_cursor_x - 2, ssd1306_cursor_y - 1, ssd1306_cursor_y + ssd1306_char_y_size - 1, ssd1306_back_color);
+                    gfx_vline(gfx_cursor_x - 1, gfx_cursor_y - 1, gfx_cursor_y + gfx_char_y_size - 1, gfx_back_color);
+                    if (gfx_text_flags & GFX_TEXT_FLAG_DOUBLE_WIDTH) {
+                        gfx_vline(gfx_cursor_x - 2, gfx_cursor_y - 1, gfx_cursor_y + gfx_char_y_size - 1, gfx_back_color);
                     }
-                    ssd1306_text_flags &= ~SSD1306_TEXT_FLAG_BORDER_CHAR;
+                    gfx_flags &= ~GFX_FLAG_BORDER_CHAR;
                 }
 
-                if (ssd1306_text_flags & SSD1306_TEXT_FLAG_BORDER_LINE) {
+                if (gfx_flags & GFX_FLAG_BORDER_LINE) {
                     // add top border
-                    ssd1306_hline(ssd1306_cursor_x, ssd1306_cursor_y - 1, ssd1306_cursor_x + ssd1306_char_x_size - 1, ssd1306_back_color);
+                    gfx_hline(gfx_cursor_x, gfx_cursor_y - 1, gfx_cursor_x + gfx_char_x_size - 1, gfx_back_color);
                 }
             }
 
             // add bottom and right borders always
             // FIX: these overlap between lines, issue if using invert
-            if (ssd1306_back_color != SSD1306_COLOR_NONE) {
-                ssd1306_hline(ssd1306_cursor_x, ssd1306_cursor_y + ssd1306_char_y_size - 1, ssd1306_cursor_x + ssd1306_char_x_size - 1, ssd1306_back_color);
-                ssd1306_vline(ssd1306_cursor_x + ssd1306_char_x_size - 1, ssd1306_cursor_y, ssd1306_cursor_y + ssd1306_char_y_size - 2, ssd1306_back_color);
-                if (ssd1306_text_flags & SSD1306_TEXT_FLAG_DOUBLE_WIDTH) {
-                    ssd1306_vline(ssd1306_cursor_x + ssd1306_char_x_size - 2, ssd1306_cursor_y, ssd1306_cursor_y + ssd1306_char_y_size - 2, ssd1306_back_color);
+            if (gfx_back_color != GFX_COLOR_NONE) {
+                gfx_hline(gfx_cursor_x, gfx_cursor_y + gfx_char_y_size - 1, gfx_cursor_x + gfx_char_x_size - 1, gfx_back_color);
+                gfx_vline(gfx_cursor_x + gfx_char_x_size - 1, gfx_cursor_y, gfx_cursor_y + gfx_char_y_size - 2, gfx_back_color);
+                if (gfx_text_flags & GFX_TEXT_FLAG_DOUBLE_WIDTH) {
+                    gfx_vline(gfx_cursor_x + gfx_char_x_size - 2, gfx_cursor_y, gfx_cursor_y + gfx_char_y_size - 2, gfx_back_color);
                 }
             }
         }
@@ -1353,11 +1325,10 @@ bool ssd1306_put_ch(char ch) {
 
 #ifdef SERIAL_DEBUG_GFX_STATS
     uint32_t end = micros();
-    ssd1306_put_ch_total += end - start;
-    ssd1306_put_ch_count++;
+    gfx_put_ch_total += end - start;
+    gfx_put_ch_count++;
 #endif
-    return
-            retVal;
+    return retVal;
 }
 
 #else
@@ -1367,8 +1338,8 @@ static bool haveSetBitsAtOrAfter(uint8_t bit) {
     return allBits & (0xff << bit) & 0xff;
 }
 
-// ssd1306_print ch to display X,Y coordinates using ASCII 5x7 font
-bool ssd1306_put_ch(char ch) {
+// gfx_print ch to display X,Y coordinates using ASCII 5x7 font
+bool gfx_put_ch(char ch) {
     bool retVal = false;
 #ifdef SERIAL_DEBUG_GFX_STATS
     uint32_t start = micros();
@@ -1376,16 +1347,16 @@ bool ssd1306_put_ch(char ch) {
 
     if (ch == '\n') {
         // go to next line and left margin
-        ssd1306_new_line();
-    } else if (ch >= 32 && ssd1306_is_char_visible() && (ssd1306_fore_color != SSD1306_COLOR_NONE || ssd1306_back_color != SSD1306_COLOR_NONE)) {
-        if (!(ssd1306_flags & SSD1306_FLAG_SIMULATED_PRINT)) {
+        gfx_new_line();
+    } else if (ch >= 32 && gfx_is_char_visible() && (gfx_fore_color != GFX_COLOR_NONE || gfx_back_color != GFX_COLOR_NONE)) {
+        if (!(gfx_flags & GFX_FLAG_SIMULATED_PRINT)) {
             uint8_t row, col, *pData, *pDataStart, data, mask;
-            uint8_t textSize = ssd1306_text_flags & SSD1306_TEXT_FLAG_DOUBLE_SIZE;
-            uint8_t xPixels = SSD1306_FONT_X_PIXELS;
-            uint8_t yPixels = SSD1306_FONT_Y_PIXELS / SSD1306_FONT_Y_ROWS;
+            uint8_t textSize = gfx_text_flags & GFX_TEXT_FLAG_DOUBLE_SIZE;
+            uint8_t xPixels = GFX_FONT_X_PIXELS;
+            uint8_t yPixels = GFX_FONT_Y_PIXELS / GFX_FONT_Y_ROWS;
             uint8_t subRow = 0;
 
-#ifndef SSD1306_HAVE_ALT_FONTS
+#ifndef GFX_HAVE_ALT_FONTS
             uint8_t charBits[10];
             *((uint32_t *) (charBits)) = pgm_read_dword((const char *) FONT_CHARS[ch - 32]);
             charBits[4] = pgm_read_byte((const char *) FONT_CHARS[ch - 32] + 4);
@@ -1394,25 +1365,25 @@ bool ssd1306_put_ch(char ch) {
 #else
             uint8_t charBits[20];
             const char *pBits = (const char *) FONT_CHARS[ch - 32];
-            uint8_t subRows = SSD1306_FONT_Y_ROWS;
+            uint8_t subRows = GFX_FONT_Y_ROWS;
 
-#ifdef SSD1306_LARGE_FONT
+#ifdef GFX_LARGE_FONT
             // see if we have replacement
-            if (textSize == SSD1306_TEXT_FLAG_DOUBLE_SIZE && ssd1306_findSubstitutedChar(ch, (PGM_P) LARGE_CHARS, SSD1306_LARGE_X_PIXELS, SSD1306_LARGE_Y_PIXELS, LARGE_CHAR_MAP, LARGE_CHAR_SET, &pBits)) {
-                subRows = SSD1306_LARGE_Y_ROWS;
+            if (textSize == GFX_TEXT_FLAG_DOUBLE_SIZE && gfx_findSubstitutedChar(ch, (PGM_P) LARGE_CHARS, GFX_LARGE_X_PIXELS, GFX_LARGE_Y_PIXELS, LARGE_CHAR_MAP, LARGE_CHAR_SET, &pBits)) {
+                subRows = GFX_LARGE_Y_ROWS;
                 textSize = 0;
-                xPixels = SSD1306_LARGE_X_PIXELS;
-                yPixels = SSD1306_LARGE_Y_PIXELS / SSD1306_LARGE_Y_ROWS;
+                xPixels = GFX_LARGE_X_PIXELS;
+                yPixels = GFX_LARGE_Y_PIXELS / GFX_LARGE_Y_ROWS;
             }
 #endif
 
-#ifdef SSD1306_SMALL_FONT
+#ifdef GFX_SMALL_FONT
             // see if we have replacement
-            if ((ssd1306_text_flags & SSD1306_TEXT_FLAG_SMALL_FONT) && ssd1306_findSubstitutedChar(ch, (PGM_P) SMALL_CHARS, SSD1306_SMALL_X_PIXELS, SSD1306_SMALL_Y_PIXELS, SMALL_CHAR_MAP, SMALL_CHAR_SET, &pBits)) {
-                subRows = SSD1306_SMALL_Y_ROWS;
+            if ((gfx_text_flags & GFX_TEXT_FLAG_SMALL_FONT) && gfx_findSubstitutedChar(ch, (PGM_P) SMALL_CHARS, GFX_SMALL_X_PIXELS, GFX_SMALL_Y_PIXELS, SMALL_CHAR_MAP, SMALL_CHAR_SET, &pBits)) {
+                subRows = GFX_SMALL_Y_ROWS;
                 textSize = 0;
-                xPixels = SSD1306_SMALL_X_PIXELS;
-                yPixels = SSD1306_SMALL_Y_PIXELS / SSD1306_SMALL_Y_ROWS;
+                xPixels = GFX_SMALL_X_PIXELS;
+                yPixels = GFX_SMALL_Y_PIXELS / GFX_SMALL_Y_ROWS;
             }
 #endif
             *((uint32_t *) (charBits)) = pgm_read_dword(pBits);
@@ -1431,14 +1402,14 @@ bool ssd1306_put_ch(char ch) {
                 uint32_t startLoop = micros();
 #endif
 
-                if (ssd1306_back_color != SSD1306_COLOR_NONE && ssd1306_fore_color != SSD1306_COLOR_NONE) {
+                if (gfx_back_color != GFX_COLOR_NONE && gfx_fore_color != GFX_COLOR_NONE) {
                     allBits = 0xff; // all are used
                 } else {
                     allBits = 0;
                     for (col = 0, pData = pDataStart; col < xPixels; col++, pData++) {
                         allBits |= *pData;
                     }
-                    if (ssd1306_back_color != SSD1306_COLOR_NONE) {
+                    if (gfx_back_color != GFX_COLOR_NONE) {
                         allBits ^= 0xff; // only 0's are significant
                     }
                 }
@@ -1447,10 +1418,10 @@ bool ssd1306_put_ch(char ch) {
                     for (col = 0, pData = pDataStart; col < xPixels; col++, pData++) {
                         data = *pData; // *(charBits + col + subRow * xPixels);
 #ifdef SERIAL_DEBUG_GFX_STATS
-                        ssd1306_put_ch_lp_count++;
+                        gfx_put_ch_lp_count++;
 #endif
-                        color_t color = (data & mask) ? ssd1306_fore_color : ssd1306_back_color;
-                        if (color == SSD1306_COLOR_NONE) continue;
+                        color_t color = (data & mask) ? gfx_fore_color : gfx_back_color;
+                        if (color == GFX_COLOR_NONE) continue;
 
                         uint8_t row1 = row + (subRow << 3);
                         uint8_t row2;
@@ -1458,68 +1429,68 @@ bool ssd1306_put_ch(char ch) {
                         uint8_t col2;
 
                         switch (textSize) {
-                            case SSD1306_TEXT_FLAG_DOUBLE_HEIGHT:
-                                ssd1306_set_pixel(col1 = col + ssd1306_cursor_x, row2 = ssd1306_cursor_y + row + row, color);
-                                ssd1306_set_pixel(col1, ++row2, color);
+                            case GFX_TEXT_FLAG_DOUBLE_HEIGHT:
+                                gfx_set_pixel(col1 = col + gfx_cursor_x, row2 = gfx_cursor_y + row + row, color);
+                                gfx_set_pixel(col1, ++row2, color);
                                 break;
-                            case SSD1306_TEXT_FLAG_DOUBLE_WIDTH:
-                                ssd1306_set_pixel(col2 = ssd1306_cursor_x + col + col, row1 + ssd1306_cursor_y, color);
-                                ssd1306_set_pixel(++col2, row1, color);
+                            case GFX_TEXT_FLAG_DOUBLE_WIDTH:
+                                gfx_set_pixel(col2 = gfx_cursor_x + col + col, row1 + gfx_cursor_y, color);
+                                gfx_set_pixel(++col2, row1, color);
                                 break;
-                            case SSD1306_TEXT_FLAG_DOUBLE_SIZE:
-                                ssd1306_set_pixel(col2 = ssd1306_cursor_x + col + col, row2 = ssd1306_cursor_y + row + row, color);
-                                ssd1306_set_pixel(++col2, row2, color);
-                                ssd1306_set_pixel(--col2, ++row2, color);
-                                ssd1306_set_pixel(++col2, row2, color);
+                            case GFX_TEXT_FLAG_DOUBLE_SIZE:
+                                gfx_set_pixel(col2 = gfx_cursor_x + col + col, row2 = gfx_cursor_y + row + row, color);
+                                gfx_set_pixel(++col2, row2, color);
+                                gfx_set_pixel(--col2, ++row2, color);
+                                gfx_set_pixel(++col2, row2, color);
                                 break;
 
                             default: {
 #ifdef SERIAL_DEBUG_GFX_STATS
                                 uint32_t startPix = micros();
 #endif
-                                ssd1306_set_pixel(col + ssd1306_cursor_x, row1 + ssd1306_cursor_y, color);
+                                gfx_set_pixel(col + gfx_cursor_x, row1 + gfx_cursor_y, color);
 #ifdef SERIAL_DEBUG_GFX_STATS
                                 uint32_t endPix = micros();
-                                ssd1306_put_pixel_total += endPix - startPix;
-                                ssd1306_put_pixel_count++;
+                                gfx_put_pixel_total += endPix - startPix;
+                                gfx_put_pixel_count++;
 #endif
                                 break;
                             }
                         }
                     }
                 }
-#ifdef SSD1306_HAVE_ALT_FONTS
+#ifdef GFX_HAVE_ALT_FONTS
             }
 #endif
 #ifdef SERIAL_DEBUG_GFX_STATS
             uint32_t endLoop = micros();
-            ssd1306_put_ch_lp_total += endLoop - startLoop;
+            gfx_put_ch_lp_total += endLoop - startLoop;
 #endif
 
             // FIX: these overlap between lines, issue if using invert
-            if (ssd1306_back_color != SSD1306_COLOR_NONE) {
-                if (ssd1306_text_flags & SSD1306_TEXT_FLAG_BORDER_CHAR) {
+            if (gfx_back_color != GFX_COLOR_NONE) {
+                if (gfx_flags & GFX_FLAG_BORDER_CHAR) {
                     // add left border
-                    ssd1306_vline(ssd1306_cursor_x - 1, ssd1306_cursor_y - 1, ssd1306_cursor_y + ssd1306_char_y_size - 1, ssd1306_back_color);
-                    if (ssd1306_text_flags & SSD1306_TEXT_FLAG_DOUBLE_WIDTH) {
-                        ssd1306_vline(ssd1306_cursor_x - 2, ssd1306_cursor_y - 1, ssd1306_cursor_y + ssd1306_char_y_size - 1, ssd1306_back_color);
+                    gfx_vline(gfx_cursor_x - 1, gfx_cursor_y - 1, gfx_cursor_y + gfx_char_y_size - 1, gfx_back_color);
+                    if (gfx_text_flags & GFX_TEXT_FLAG_DOUBLE_WIDTH) {
+                        gfx_vline(gfx_cursor_x - 2, gfx_cursor_y - 1, gfx_cursor_y + gfx_char_y_size - 1, gfx_back_color);
                     }
-                    ssd1306_text_flags &= ~SSD1306_TEXT_FLAG_BORDER_CHAR;
+                    gfx_flags &= ~GFX_FLAG_BORDER_CHAR;
                 }
 
-                if (ssd1306_text_flags & SSD1306_TEXT_FLAG_BORDER_LINE) {
+                if (gfx_flags & GFX_FLAG_BORDER_LINE) {
                     // add top border
-                    ssd1306_hline(ssd1306_cursor_x, ssd1306_cursor_y - 1, ssd1306_cursor_x + ssd1306_char_x_size - 1, ssd1306_back_color);
+                    gfx_hline(gfx_cursor_x, gfx_cursor_y - 1, gfx_cursor_x + gfx_char_x_size - 1, gfx_back_color);
                 }
             }
 
             // add bottom and right borders always
             // FIX: these overlap between lines, issue if using invert
-            if (ssd1306_back_color != SSD1306_COLOR_NONE) {
-                ssd1306_hline(ssd1306_cursor_x, ssd1306_cursor_y + ssd1306_char_y_size - 1, ssd1306_cursor_x + ssd1306_char_x_size - 1, ssd1306_back_color);
-                ssd1306_vline(ssd1306_cursor_x + ssd1306_char_x_size - 1, ssd1306_cursor_y, ssd1306_cursor_y + ssd1306_char_y_size - 2, ssd1306_back_color);
-                if (ssd1306_text_flags & SSD1306_TEXT_FLAG_DOUBLE_WIDTH) {
-                    ssd1306_vline(ssd1306_cursor_x + ssd1306_char_x_size - 2, ssd1306_cursor_y, ssd1306_cursor_y + ssd1306_char_y_size - 2, ssd1306_back_color);
+            if (gfx_back_color != GFX_COLOR_NONE) {
+                gfx_hline(gfx_cursor_x, gfx_cursor_y + gfx_char_y_size - 1, gfx_cursor_x + gfx_char_x_size - 1, gfx_back_color);
+                gfx_vline(gfx_cursor_x + gfx_char_x_size - 1, gfx_cursor_y, gfx_cursor_y + gfx_char_y_size - 2, gfx_back_color);
+                if (gfx_text_flags & GFX_TEXT_FLAG_DOUBLE_WIDTH) {
+                    gfx_vline(gfx_cursor_x + gfx_char_x_size - 2, gfx_cursor_y, gfx_cursor_y + gfx_char_y_size - 2, gfx_back_color);
                 }
             }
         }
@@ -1528,216 +1499,226 @@ bool ssd1306_put_ch(char ch) {
 
 #ifdef SERIAL_DEBUG_GFX_STATS
     uint32_t end = micros();
-    ssd1306_put_ch_total += end -
+    gfx_put_ch_total += end -
                             start;
-    ssd1306_put_ch_count++;
+    gfx_put_ch_count++;
 #endif
     return
             retVal;
 }
 #endif
 
-void ssd1306_new_line() {
-    ssd1306_text_flags &= ~SSD1306_TEXT_FLAG_BORDER_LINE;
+void gfx_new_line() {
+    gfx_flags &= ~GFX_FLAG_BORDER_LINE;
 
-    if (ssd1306_text_flags & SSD1306_TEXT_FLAG_BORDER) {
-        ssd1306_text_flags |= SSD1306_TEXT_FLAG_BORDER_CHAR;
+    if (gfx_text_flags & GFX_TEXT_FLAG_BORDER) {
+        gfx_flags |= GFX_FLAG_BORDER_CHAR;
     }
 
-    ssd1306_cursor_x = ssd1306_margin_left;
-    ssd1306_cursor_y += ssd1306_char_y_size;
+    gfx_cursor_x = gfx_margin_left;
+    gfx_cursor_y += gfx_char_y_size;
 
-    if (ssd1306_text_flags & SSD1306_TEXT_FLAG_WRAP_ON_SPC) {
-        ssd1306_flags &= ~(SSD1306_FLAG_HAD_CHARS_ON_LINE);
-        ssd1306_flags |= SSD1306_FLAG_SKIP_LEADING_SPC;
+    if (gfx_flags & GFX_FLAG_WRAP_ON_SPC) {
+        gfx_flags &= ~(GFX_FLAG_HAD_CHARS_ON_LINE);
+        gfx_flags |= GFX_FLAG_SKIP_LEADING_SPC;
     } else {
-        ssd1306_flags &= ~(SSD1306_FLAG_SKIP_LEADING_SPC | SSD1306_FLAG_HAD_CHARS_ON_LINE);
+        gfx_flags &= ~(GFX_FLAG_SKIP_LEADING_SPC | GFX_FLAG_HAD_CHARS_ON_LINE);
     }
 #ifdef SERIAL_DEBUG_GFX
     serial_printC('\n');
 #endif
 };
 
-bool ssd1306_putChWithMinMax(char ch) {
+bool gfx_putChWithMinMax(char ch) {
     bool retVal = 1;
 
     if (ch == '\n') {
-        ssd1306_new_line();
+        gfx_new_line();
     } else {
-        if (ssd1306_cursor_x + ssd1306_char_x_size > ssd1306_margin_right) {
-            ssd1306_new_line();
+        if (gfx_cursor_x + gfx_char_x_size > gfx_margin_right) {
+            if (gfx_text_flags & GFX_TEXT_FLAG_WRAP) gfx_new_line();
         }
 
-        retVal = ssd1306_put_ch(ch);
+        retVal = gfx_put_ch(ch);
         if (retVal) {
-            int8_t sy = ssd1306_cursor_y;
+            int8_t sy = gfx_cursor_y;
 
 #ifdef SERIAL_DEBUG_GFX
             serial_printC(ch);
 #endif
-            ssd1306_flags &= ~SSD1306_FLAG_SKIP_LEADING_SPC;
+            gfx_flags &= ~GFX_FLAG_SKIP_LEADING_SPC;
 
-            if (ssd1306_min_x > ssd1306_cursor_x) ssd1306_min_x = ssd1306_cursor_x;
-            if (ssd1306_min_y > sy) ssd1306_min_y = sy;
+            if (gfx_min_x > gfx_cursor_x) gfx_min_x = gfx_cursor_x;
+            if (gfx_min_y > sy) gfx_min_y = sy;
 
-            ssd1306_cursor_x += ssd1306_char_x_size;
-            if (ssd1306_max_x < ssd1306_cursor_x) ssd1306_max_x = ssd1306_cursor_x;
-            if (ssd1306_max_y < ssd1306_cursor_y + ssd1306_char_y_size) ssd1306_max_y = ssd1306_cursor_y + ssd1306_char_y_size;
+            gfx_cursor_x += gfx_char_x_size;
+            if (gfx_max_x < gfx_cursor_x) gfx_max_x = gfx_cursor_x;
+            if (gfx_max_y < gfx_cursor_y + gfx_char_y_size) gfx_max_y = gfx_cursor_y + gfx_char_y_size;
         }
     }
     return retVal;
 };
 
-void ssd1306_flush_wrap_chars() {
-    if (ssd1306_wrap_buff_pos) {
-        uint8_t textFlags = ssd1306_text_flags;
-        ssd1306_text_flags &= ~(SSD1306_TEXT_FLAG_WRAP | SSD1306_TEXT_FLAG_WRAP_ON_SPC);
+void gfx_flush_wrap_chars() {
+    if (gfx_wrap_buff_pos) {
+        uint8_t textFlags = gfx_text_flags;
+        gfx_text_flags &= ~GFX_TEXT_FLAG_WRAP;
+        gfx_flags &= ~GFX_FLAG_WRAP_ON_SPC;
 
         uint8_t i;
-        for (i = 0; i < ssd1306_wrap_buff_pos; i++) {
-            char c = ssd1306_wrap_buff[i];
-            if (c != ' ' || !(ssd1306_flags & SSD1306_FLAG_SKIP_LEADING_SPC)) {
-                ssd1306_flags |= SSD1306_FLAG_HAD_CHARS_ON_LINE;
-                ssd1306_flags &= ~SSD1306_FLAG_SKIP_LEADING_SPC;
-                ssd1306_putChWithMinMax(c);
+        for (i = 0; i < gfx_wrap_buff_pos; i++) {
+            char c = gfx_wrap_buff[i];
+            if (c != ' ' || !(gfx_flags & GFX_FLAG_SKIP_LEADING_SPC)) {
+                gfx_flags |= GFX_FLAG_HAD_CHARS_ON_LINE;
+                gfx_flags &= ~GFX_FLAG_SKIP_LEADING_SPC;
+                gfx_putChWithMinMax(c);
             }
         }
 
-        ssd1306_flags &= ~SSD1306_FLAG_HAD_NO_BREAK_IN_LINE;
-        ssd1306_text_flags = textFlags;
-        ssd1306_wrap_buff_pos = 0;
+        gfx_text_flags = textFlags;
+        gfx_flags &= ~GFX_FLAG_HAD_NO_BREAK_IN_LINE;
+        gfx_flags |= GFX_FLAG_WRAP_ON_SPC;
+        gfx_wrap_buff_pos = 0;
     }
 }
 
 // writes character to display at current cursor startPosition.
-void ssd1306_putc(char ch) {
+void gfx_putc(char ch) {
 #ifdef SERIAL_DEBUG_GFX_STATS
     uint32_t start = micros();
 #endif
     uint8_t skip = 0;
 
-    if (ssd1306_text_flags & SSD1306_TEXT_FLAG_WRAP) {
-        // here add logic for wrapping on spaces if the char would fall after the right margin
-        if (ssd1306_text_flags & SSD1306_TEXT_FLAG_WRAP_ON_SPC) {
-            if (ch == '\n') {
-                ssd1306_flush_wrap_chars();
-                ssd1306_new_line();
-                skip = 1;
-            } else if (ch == ' ') {
-                if (ssd1306_wrap_buff_pos) {
-                    // flush accumulated
-                    ssd1306_flush_wrap_chars();
-                }
-
-                // if we had just wrapped skip it all together, otherwise add to the buffer
-                if (ssd1306_flags & SSD1306_FLAG_SKIP_LEADING_SPC) {
-                    skip = 1;
-                }
+    // here add logic for wrapping on spaces if the char would fall after the right margin
+    if (gfx_flags & GFX_FLAG_WRAP_ON_SPC) {
+        if (ch == '\n') {
+            gfx_flush_wrap_chars();
+            gfx_new_line();
+            skip = 1;
+        } else if (ch == ' ') {
+            if (gfx_wrap_buff_pos) {
+                // flush accumulated
+                gfx_flush_wrap_chars();
             }
 
-            if (!skip) {
-                if (ssd1306_cursor_x + (ssd1306_wrap_buff_pos + 1) * ssd1306_char_x_size >= ssd1306_margin_right) {
-                    // flush them all now, if this is these are the first of the batch, otherwise, new line, then flush
-                    if (ssd1306_flags & SSD1306_FLAG_HAD_CHARS_ON_LINE) {
-                        // output new line then print these
-                        // if had no spaces output at all for the line then we need to flush
-                        // what is in the buffer as part of the same line because it is one solid block of text
-                        if (ssd1306_flags & SSD1306_FLAG_HAD_NO_BREAK_IN_LINE) {
-                            ssd1306_flush_wrap_chars();
-                        }
+            // if we had just wrapped skip it all together, otherwise add to the buffer
+            if (gfx_flags & GFX_FLAG_SKIP_LEADING_SPC) {
+                skip = 1;
+            }
+        }
 
-                        ssd1306_new_line();
-                    } else {
-                        int solidBlock = (ssd1306_flags & SSD1306_FLAG_SKIP_LEADING_SPC) && (ssd1306_wrap_buff_pos == 0 || ssd1306_wrap_buff[0] != ' ');
-
-                        ssd1306_flush_wrap_chars();
-
-                        if (solidBlock) {
-                            // this is a solid block that the next char will overflow the margin, so afterwards, new line
-                            ssd1306_new_line();
-                        }
-
-                        // signal forced flush because it is the first block
-                        ssd1306_flags |= SSD1306_FLAG_HAD_NO_BREAK_IN_LINE;
+        if (!skip) {
+            if (gfx_cursor_x + (gfx_wrap_buff_pos + 1) * gfx_char_x_size >= gfx_margin_right) {
+                // flush them all now, if this is these are the first of the batch, otherwise, new line, then flush
+                if (gfx_flags & GFX_FLAG_HAD_CHARS_ON_LINE) {
+                    // output new line then print these
+                    // if had no spaces output at all for the line then we need to flush
+                    // what is in the buffer as part of the same line because it is one solid block of text
+                    if (gfx_flags & GFX_FLAG_HAD_NO_BREAK_IN_LINE) {
+                        gfx_flush_wrap_chars();
                     }
-                }
 
-                if (ch != ' ' || !(ssd1306_flags & SSD1306_FLAG_SKIP_LEADING_SPC)) {
-                    // should not be, at this point we should have flushed the buffer
-                    if (ssd1306_wrap_buff_pos >= SSD1306_WRAP_BUFFER_SIZE) {
-                        ssd1306_wrap_buff_pos = SSD1306_WRAP_BUFFER_SIZE - 1;
+                    gfx_new_line();
+                } else {
+                    int solidBlock = (gfx_flags & GFX_FLAG_SKIP_LEADING_SPC) && (gfx_wrap_buff_pos == 0 || gfx_wrap_buff[0] != ' ');
+
+                    gfx_flush_wrap_chars();
+
+                    if (solidBlock) {
+                        // this is a solid block that the next char will overflow the margin, so afterwards, new line
+                        gfx_new_line();
                     }
-                    ssd1306_wrap_buff[ssd1306_wrap_buff_pos++] = ch;
-                }
 
-                skip = 1;
+                    // signal forced flush because it is the first block
+                    gfx_flags |= GFX_FLAG_HAD_NO_BREAK_IN_LINE;
+                }
             }
-        } else {
-            if (ch == ' ' && (ssd1306_flags & SSD1306_FLAG_SKIP_LEADING_SPC)) {
-                skip = 1;
+
+            if (ch != ' ' || !(gfx_flags & GFX_FLAG_SKIP_LEADING_SPC)) {
+                // should not be, at this point we should have flushed the buffer
+                if (gfx_wrap_buff_pos >= GFX_WRAP_BUFFER_SIZE) {
+                    gfx_wrap_buff_pos = GFX_WRAP_BUFFER_SIZE - 1;
+                }
+                gfx_wrap_buff[gfx_wrap_buff_pos++] = ch;
             }
+
+            skip = 1;
+        }
+    } else {
+        if (ch == ' ' && (gfx_flags & GFX_FLAG_SKIP_LEADING_SPC)) {
+            skip = 1;
         }
     }
 
     if (!skip) {
-        ssd1306_putChWithMinMax(ch);
+        gfx_putChWithMinMax(ch);
     }
+
 #ifdef SERIAL_DEBUG_GFX_STATS
     uint32_t end = micros();
-    ssd1306_putc_total += end - start;
-    ssd1306_putc_count++;
+    gfx_putc_total += end - start;
+    gfx_putc_count++;
 #endif
 }
 
 static int16_t sx;
 static int8_t sy;
 
-void ssd_1306_start_text_bounds() {
-    sx = ssd1306_cursor_x;
-    sy = ssd1306_cursor_y;
-    ssd1306_max_x = INT16_MIN;
-    ssd1306_min_x = INT16_MAX;
-    ssd1306_max_y = INT8_MIN;
-    ssd1306_min_y = INT8_MAX;
+void gfx_start_text_bounds() {
+    sx = gfx_cursor_x;
+    sy = gfx_cursor_y;
+    gfx_max_x = INT16_MIN;
+    gfx_min_x = INT16_MAX;
+    gfx_max_y = INT8_MIN;
+    gfx_min_y = INT8_MAX;
 
-    ssd1306_flags |= SSD1306_FLAG_SIMULATED_PRINT;
+    gfx_flags |= GFX_FLAG_SIMULATED_PRINT;
 }
 
-void ssd_1306_end_text_bounds(coord_x *pX0, coord_y *pY0, uint8_t *pW, uint8_t *pH) {
-    ssd1306_flush_wrap_chars();
+void gfx_end_text_bounds(coord_x *pX0, coord_y *pY0, uint8_t *pW, uint8_t *pH) {
+    gfx_cursor_x = sx;
+    gfx_cursor_y = sy;
 
-    ssd1306_cursor_x = sx;
-    ssd1306_cursor_y = sy;
+    if (pX0) *pX0 = gfx_cursor_x;
+    if (pY0) *pY0 = gfx_cursor_y;
+    if (pW) *pW = gfx_max_x - gfx_min_x;
+    if (pH) *pH = gfx_max_y - gfx_min_y;
 
-    if (pX0) *pX0 = ssd1306_cursor_x;
-    if (pY0) *pY0 = ssd1306_cursor_y;
-    if (pW) *pW = ssd1306_max_x - ssd1306_min_x;
-    if (pH) *pH = ssd1306_max_y - ssd1306_min_y;
-
-    ssd1306_flags &= ~SSD1306_FLAG_SIMULATED_PRINT;
+    gfx_flags &= ~GFX_FLAG_SIMULATED_PRINT;
 };
 
-void ssd1306_get_text_bounds(PGM_P s, coord_x *pX0, coord_y *pY0, uint8_t *pW, uint8_t *pH) {
-    ssd_1306_start_text_bounds();
-    ssd1306_fputs_P(s);
-    ssd_1306_end_text_bounds(pX0, pY0, pW, pH);
+void gfx_get_text_bounds(PGM_P s, coord_x *pX0, coord_y *pY0, uint8_t *pW, uint8_t *pH) {
+    gfx_start_text_bounds();
+    gfx_fputs_P(s);
+    gfx_end_text_bounds(pX0, pY0, pW, pH);
 }
 
-void ssd1306_print_value(uint8_t flags, int32_t value, uint16_t valueDivider, PGM_P suffix) {
-    uint8_t textSizeFlags = ssd1306_text_flags;
+void gfx_start_text_spc_wrap() {
+    gfx_wrap_buff_pos = 0;
+    gfx_flags &= ~(GFX_FLAG_HAD_NO_BREAK_IN_LINE | GFX_FLAG_SKIP_LEADING_SPC | GFX_FLAG_HAD_CHARS_ON_LINE);
+    gfx_flags |= GFX_FLAG_WRAP_ON_SPC;
+}
 
-    if (someSet(flags, PV_2X_SIZE | PV_2X_SIZE_UNITS_ONLY)) ssd1306_set_text_size_flags(SSD1306_TEXT_FLAG_DOUBLE_SIZE);
-    int32_t valueUnits = value / valueDivider;
+void gfx_end_text_spc_wrap() {
+    gfx_flush_wrap_chars();
+    gfx_flags &= ~GFX_FLAG_WRAP_ON_SPC;
+};
+
+void gfx_print_value(uint8_t flags, int16_t value, uint16_t valueDivider, PGM_P suffix) {
+    uint8_t textSizeFlags = gfx_text_flags;
+
+    if (someSet(flags, PV_2X_SIZE | PV_2X_SIZE_UNITS_ONLY)) gfx_set_text_size_flags(GFX_TEXT_FLAG_DOUBLE_SIZE);
+    int16_t valueUnits = value / valueDivider;
 
     if (value > 0 && someSet(flags, PV_ALWAYS_PRINT_SIGN)) {
-        ssd1306_putc('+');
+        gfx_putc('+');
     }
 
     if (!valueUnits && value < 0) {
-        ssd1306_putc('-');
+        gfx_putc('-');
     }
 
-    ssd1306_print_int32(valueUnits);
+    gfx_print_int16(valueUnits);
     uint8_t valueDecimals = flags & PV_DECIMALS;
 
     if (valueDecimals) {
@@ -1764,53 +1745,53 @@ void ssd1306_print_value(uint8_t flags, int32_t value, uint16_t valueDivider, PG
             }
         }
 
-        if (someSet(flags, PV_2X_SIZE_UNITS_ONLY)) ssd1306_set_text_size_flags(0);
-        ssd1306_fputs_P(prefix);
-        ssd1306_print_uint16(decimalDigits);
+        if (someSet(flags, PV_2X_SIZE_UNITS_ONLY)) gfx_set_text_size_flags(0);
+        gfx_fputs_P(prefix);
+        gfx_print_uint16(decimalDigits);
     }
 
-    if (someSet(flags, PV_SPACE_SUFFIX)) ssd1306_move_x_by(ssd1306_char_x_size);
-    if (someSet(flags, PV_THIRD_SPACE_SUFFIX)) ssd1306_move_x_by((coord_x) (ssd1306_char_x_size / 3));
-    if (someSet(flags, PV_HALF_SPACE_SUFFIX)) ssd1306_move_x_by((coord_x) (ssd1306_char_x_size / 2));
+    if (someSet(flags, PV_SPACE_SUFFIX)) gfx_cursor_x += gfx_char_x_size;
+    if (someSet(flags, PV_THIRD_SPACE_SUFFIX)) gfx_cursor_x += (coord_x) (gfx_char_x_size / 3);
+    if (someSet(flags, PV_HALF_SPACE_SUFFIX)) gfx_cursor_x += (coord_x) (gfx_char_x_size / 2);
 
     if (suffix) {
-        if (someSet(flags, PV_2X_SIZE_UNITS_ONLY)) ssd1306_set_text_size_flags(SSD1306_TEXT_FLAG_DOUBLE_SIZE);
-        ssd1306_fputs_P((PGM_P) suffix);
+        if (someSet(flags, PV_2X_SIZE_UNITS_ONLY)) gfx_set_text_size_flags(GFX_TEXT_FLAG_DOUBLE_SIZE);
+        gfx_fputs_P((PGM_P) suffix);
     }
 
-    ssd1306_set_text_size_flags(textSizeFlags);
+    gfx_set_text_size_flags(textSizeFlags);
 }
 
-void ssd1306_print_centered_P(PGM_P message, uint8_t flags) {
+void gfx_print_centered_P(PGM_P message, uint8_t flags) {
     uint8_t w, h;
     coord_x x;
     coord_y y;
 
-    ssd1306_get_text_bounds((PGM_P) message, &x, &y, &w, &h);
+    gfx_get_text_bounds((PGM_P) message, &x, &y, &w, &h);
 
     if (someSet(flags, PC_CENTERED_Y) && DISPLAY_YSIZE > y + h) {
-        ssd1306_move_y_by((coord_y) ((DISPLAY_YSIZE - y - h) / 2));
+        gfx_cursor_y += (coord_y) ((DISPLAY_YSIZE - y - h) / 2);
     }
+
     if (someSet(flags, PC_CENTERED_X) && DISPLAY_XSIZE > x + w) {
-        ssd1306_move_x_by((coord_x) ((DISPLAY_XSIZE - x - w) / 2));
+        gfx_cursor_y += (coord_x) ((DISPLAY_XSIZE - x - w) / 2);
     }
 
-    ssd1306_fputs_P((PGM_P) message);
+    gfx_fputs_P((PGM_P) message);
 }
-
 
 #ifdef CONSOLE_DEBUG
 
-ssd1306_display_buffer_t ssd1306_display_data;
+gfx_display_buffer_t gfx_display_data;
 
-void ssd1306_display() {
+void gfx_display() {
     char test_displayBuffer[CONSOLE_DISPLAY_BUFFER_SIZE];
-    ssd1306_display_to_str(test_displayBuffer);
+    gfx_display_to_str(test_displayBuffer);
     puts(test_displayBuffer);
 };
 
-void ssd1306_display_to_str(char *s) {
-    ssd1306_flush_wrap_chars();
+void gfx_display_to_str(char *s) {
+    gfx_end_text_spc_wrap();
 
     *s++ = '/';
     for (int i = 0; i < DISPLAY_XSIZE; i++) {
@@ -1823,7 +1804,7 @@ void ssd1306_display_to_str(char *s) {
         for (int b = 1; b < 256; b *= 2) {
             *s++ = '|';
             for (int c = 0; c < DISPLAY_XSIZE; c++) {
-                *s++ = ssd1306_display_buffer[pg][c] & b ? '@' : ' ';
+                *s++ = gfx_display_buffer[pg][c] & b ? '@' : ' ';
             }
             *s++ = '|';
             *s++ = '\n';

@@ -151,7 +151,7 @@ void fp_print_float(print_funcs *pf, double number, uint8_t decimals) {
 
         number += rounding;
 
-        // Extract the integer part of the number and ssd1306_print it
+        // Extract the integer part of the number and gfx_print it
         unsigned long int_part = (unsigned long) number;
         double remainder = number - (double) int_part;
         fp_print_uint32_lpad(pf, int_part, 10, 0, 0, 0);
