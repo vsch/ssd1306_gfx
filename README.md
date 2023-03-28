@@ -18,10 +18,11 @@ For ATmega328p only.
 
 #### 1.16
 
-* [ ] rename `ssd1306_` prefix to `gfx_` prefix
-* [ ] remove `gfx_flush_wrap_chars()` and replace with
-    `gfx_start_spc_wrap()` and `gfx_end_spc_wrap()` to delimit output
-    that is wrapped. All else is may be wrapped only by right margin.
+* rename `ssd1306_` prefix to `gfx_` prefix
+* remove `gfx_flush_wrap_chars()` and replace with
+    `gfx_start_text_spc_wrap()` and `gfx_end_text_spc_wrap()` to delimit
+    output that is wrapped. All else is may be wrapped only by right
+    margin.
 
 #### 1.14
 
