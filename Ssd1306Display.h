@@ -147,6 +147,8 @@ public:
     inline void rect(coord_x x1, coord_y y1) { gfx_rect(x1, y1); }
     inline void circle(int8_t radius) { gfx_circle(radius); }
     inline void roundRect(coord_x x1, coord_y y1, int8_t r, uint8_t octs) { gfx_round_rect(x1, y1, r, octs); }
+    inline void bitMap(const uint8_t bitmap[], uint8_t w, uint8_t h) { gfx_bitmap(bitmap, w, h); }
+    inline void progressBarTo(uint8_t pbFlags, uint8_t progress, coord_x x1, coord_y y1, color_t undoneColor) { gfx_progress_bar_to(pbFlags,progress,x1,y1,undoneColor); }
     // @formatter:on
 
     // text functions
@@ -211,7 +213,7 @@ public:
         gfx_print_centered_P((PGM_P) message, flags);
     }
 
-    void printValue(uint8_t flags, int16_t value, uint16_t valueDivider, PGM_STR suffix);
+    void printValue(uint8_t flags, int16_t value, int16_t valueDivider, PGM_STR suffix);
 };
 
 extern Ssd1306Display display;

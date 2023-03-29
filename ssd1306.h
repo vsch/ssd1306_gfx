@@ -1,6 +1,7 @@
 #ifndef _SSD1306_H_
 #define _SSD1306_H_
 
+#ifndef CONSOLE_DEBUG
 #ifndef clearBit
 #define clearBit(x, y) (x &= ~_BV(y))     // equivalent to cbi(x,y)
 #endif // clearBit
@@ -8,6 +9,7 @@
 #ifndef setBit
 #define setBit(x, y) (x |= _BV(y))        // equivalent to sbi(x,y)
 #endif // setBit
+#endif
 
 #ifdef __cplusplus
 extern "C" {

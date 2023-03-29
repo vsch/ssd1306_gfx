@@ -281,6 +281,13 @@ extern void gfx_circle(int8_t radius);         // draw circle centered on cursor
 extern void gfx_round_rect(coord_x x1, coord_y y1, int8_t r, uint8_t octants);   // draw rounded rectangle outline in foreground, fill in background
 
 extern void gfx_bitmap(const uint8_t bitmap[], uint8_t w, uint8_t h);
+extern void gfx_clip_to_screen(coord_x *x, coord_y *y);
+
+#define PB_NORMAL   0x00  // left to right, or bottom to top
+#define PB_REVERSED 0x01  // right to left, or top to bottom
+#define PB_VERTICAL 0x02
+
+extern void gfx_progress_bar_to(uint8_t pbFlags, uint8_t progress, coord_x x1, coord_y y1, color_t undoneColor);
 
 #ifdef GFX_FANCY
 extern void gfx_ellipse(int8_t width, int8_t height);         // draw ellipse centered on cursor, outline in foreground, fill in background
@@ -306,7 +313,10 @@ extern uint32_t gfx_putc_total;
 extern uint16_t gfx_putc_count;
 #endif
 
+#ifdef GFX_BIT_BLIT
 extern void gfx_bitBlit(const uint8_t *pData, uint8_t xSize, uint8_t ySize);
+#endif
+
 extern bool gfx_put_ch(char ch);
 extern void gfx_new_line();
 extern void gfx_putc(char ch);
@@ -354,7 +364,7 @@ extern const char spcString[] PROGMEM;
 #define PV_SPACE_SUFFIX       0x20   // if suffix is given then put full space before it, can be combined with others to add more spacing
 #define PV_HALF_SPACE_SUFFIX  0x40   // if suffix is given then put half space before it, can be combined with others to add more spacing
 #define PV_THIRD_SPACE_SUFFIX 0x80   // if suffix is given then put a third of space before it, can be combined with others to add more spacing
-extern void gfx_print_value(uint8_t flags, int16_t value, uint16_t valueDivider, PGM_P suffix);
+extern void gfx_print_value(uint8_t flags, int16_t value, int16_t valueDivider, PGM_P suffix);
 
 #define PC_CENTERED_Y 1
 #define PC_CENTERED_X 2

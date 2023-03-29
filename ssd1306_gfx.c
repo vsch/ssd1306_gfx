@@ -547,7 +547,7 @@ void gfx_vlines(coord_x x0, coord_y y0, coord_x x1, coord_y y1, color_t color) {
     gfx_normalize_y(&y0, &y1);
 
     for (int i = x0; i <= x1; i++) {
-        gfx_vline(i, y0, y1, gfx_back_color);
+        gfx_vline(i, y0, y1, color);
     }
 }
 
@@ -560,7 +560,7 @@ void gfx_hlines(coord_x x0, coord_y y0, coord_x x1, coord_y y1, color_t color) {
     gfx_normalize_y(&y0, &y1);
 
     for (int i = y0; i <= y1; i++) {
-        gfx_hline(x0, i, x1, gfx_back_color);
+        gfx_hline(x0, i, x1, color);
     }
 #endif
 }
@@ -1704,47 +1704,47 @@ void gfx_end_text_spc_wrap() {
     gfx_flags &= ~GFX_FLAG_WRAP_ON_SPC;
 };
 
-void gfx_print_value(uint8_t flags, int16_t value, uint16_t valueDivider, PGM_P suffix) {
+void gfx_print_value(uint8_t flags, int16_t value, int16_t valueDivider, PGM_P suffix) {
     uint8_t textSizeFlags = gfx_text_flags;
 
     if (someSet(flags, PV_2X_SIZE | PV_2X_SIZE_UNITS_ONLY)) gfx_set_text_size_flags(GFX_TEXT_FLAG_DOUBLE_SIZE);
-    int16_t valueUnits = value / valueDivider;
+    int16_t valueUnits = (int16_t) (value / valueDivider);
 
     if (value > 0 && someSet(flags, PV_ALWAYS_PRINT_SIGN)) {
         gfx_putc('+');
     }
 
-    if (!valueUnits && value < 0) {
-        gfx_putc('-');
-    }
-
-    gfx_print_int16(valueUnits);
     uint8_t valueDecimals = flags & PV_DECIMALS;
+    uint16_t decimalDigits = 0;
+    PGM_P prefix;
 
     if (valueDecimals) {
-        uint16_t decimalDigits = 0;
-        PGM_P prefix = PSTR(".");
-
-        if (value < 0) {
-            value = -value;
-        }
+        prefix = PSTR(".");
+        uint16_t dValue = value < 0 ? -value : value;
 
         if (valueDecimals == 1) {
-            decimalDigits = (value * 10 / valueDivider) % 10;
+            decimalDigits = (dValue * 10L / valueDivider) % 10;
         } else if (valueDecimals == 2) {
-            decimalDigits = (value * 100 / valueDivider) % 100;
+            decimalDigits = (dValue * 100L / valueDivider) % 100;
             if (decimalDigits < 10) {
                 prefix = PSTR(".0");
             }
         } else {
-            decimalDigits = (value * 1000 / valueDivider) % 1000;
+            decimalDigits = (dValue * 1000L / valueDivider) % 1000;
             if (decimalDigits < 10) {
                 prefix = PSTR(".00");
             } else if (decimalDigits < 100) {
                 prefix = PSTR(".0");
             }
         }
+    }
 
+    if (!valueUnits && value < 0 && decimalDigits) {
+        gfx_putc('-');
+    }
+
+    gfx_print_int16(valueUnits);
+    if (valueDecimals) {
         if (someSet(flags, PV_2X_SIZE_UNITS_ONLY)) gfx_set_text_size_flags(0);
         gfx_fputs_P(prefix);
         gfx_print_uint16(decimalDigits);
@@ -1778,6 +1778,58 @@ void gfx_print_centered_P(PGM_P message, uint8_t flags) {
     }
 
     gfx_fputs_P((PGM_P) message);
+}
+
+void gfx_clip_to_screen(coord_x *x, coord_y *y) {
+    if (*x < 0) *x = 0;
+    else if (*x > DISPLAY_XSIZE - 1) *x = DISPLAY_XSIZE - 1;
+    if (*y < 0) *y = 0;
+    else if (*y > DISPLAY_YSIZE - 1) *y = DISPLAY_YSIZE - 1;
+}
+
+void gfx_progress_bar_to(uint8_t pbFlags, uint8_t progress, coord_x x1, coord_y y1, color_t undoneColor) {
+    coord_x x0 = gfx_cursor_x;
+    coord_y y0 = gfx_cursor_y;
+    gfx_cursor_x = x1;
+    gfx_cursor_y = y1;
+
+    gfx_clip_to_screen(&x0, &y0);
+    gfx_clip_to_screen(&x1, &y1);
+
+    if (pbFlags & PB_VERTICAL) {
+        pbFlags ^= PB_REVERSED;
+    }
+
+    if (gfx_normalize_x(&x0, &x1) && !(pbFlags & PB_VERTICAL)) pbFlags ^= PB_REVERSED;
+    if (gfx_normalize_y(&y0, &y1) && (pbFlags & PB_VERTICAL)) pbFlags ^= PB_REVERSED;
+
+    if (gfx_fore_color != GFX_COLOR_NONE && x0 + 2 < x1 && y0 + 2 < y1) {
+        color_t backColor = gfx_back_color;
+        gfx_back_color = GFX_COLOR_NONE;
+        gfx_rect(x0, y0);
+        gfx_back_color = backColor;
+
+        x0++;
+        y0++;
+        x1--;
+        y1--;
+    }
+
+    if (progress > 255) progress = 255;
+    uint8_t useProgress = (pbFlags & PB_REVERSED) ? 255 - progress : progress;
+    int16_t scale = (int16_t) ((pbFlags & PB_VERTICAL) ? y1 - y0 : x1 - x0);
+    color_t backColor = (pbFlags & PB_REVERSED) ? undoneColor : gfx_back_color;
+    color_t gapColor = (pbFlags & PB_REVERSED) ? gfx_back_color : undoneColor;
+
+    if (pbFlags & PB_VERTICAL) {
+        coord_y p = (coord_y) (y0 + (useProgress * scale / 255));
+        gfx_hlines(x0, y0, x1, p, backColor);
+        gfx_hlines(x0, ++p, x1, y1, gapColor);
+    } else {
+        coord_x p = (coord_x) (x0 + (useProgress * scale / 255));
+        gfx_vlines(x0, y0, p, y1, backColor);
+        gfx_vlines(++p, y0, x1, y1, gapColor);
+    }
 }
 
 #ifdef CONSOLE_DEBUG
