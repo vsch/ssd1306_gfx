@@ -9,7 +9,7 @@
  *              Combined blocking and interrupt driven into one file because OLED-091 SSD1306 would not initialize
  *              with the ISR driver alone. However, after initialization using interrupts to send commands works.
  *
-* Author:      Sebastian Goessl
+ * Author:      Sebastian Goessl
  * Hardware:    ATmega328P
  *
  * LICENSE:

@@ -3,7 +3,6 @@
 //
 
 #include "Arduino.h"
-#include "ssd1306_display.h"
 #include "Ssd1306Display.h"
 
 // Compatibility

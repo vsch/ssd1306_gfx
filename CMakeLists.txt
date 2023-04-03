@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0.0)
 set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/cmake/ArduinoToolchain.cmake)
 set(CMAKE_CXX_STANDARD 98)
-set(PROJECT_NAME ssd1306)
+set(PROJECT_NAME ssd1306_gfx)
 
 # use UART with interrupts if set to non-zero
 set(UART_INT 0)

@@ -11,6 +11,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdarg.h>
 #include "Arduino.h"
 #include "print.h"
 #include "ssd1306_gfx.h"
@@ -27,6 +28,28 @@ static int __gfx_putc(char c, FILE *stream) {
 //stream setups
 //https://www.nongnu.org/avr-libc/user-manual/group__avr__stdio.html
 FILE gfx_out = FDEV_SETUP_STREAM(__gfx_putc, NULL, _FDEV_SETUP_WRITE);
+
+int gfx_printf(const char *fmt, ...) {
+    va_list ap;
+    int i;
+
+    va_start(ap, fmt);
+    i = vfprintf(&gfx_out, fmt, ap);
+    va_end(ap);
+
+    return i;
+}
+
+int gfx_printf_P(PGM_P fmt, ...) {
+    va_list ap;
+    int i;
+
+    va_start(ap, fmt);
+    i = vfprintf_P(&gfx_out, fmt, ap);
+    va_end(ap);
+
+    return i;
+}
 
 #else
 

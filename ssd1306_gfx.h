@@ -8,14 +8,9 @@
 #include <stddef.h> //uint8_t type
 #include <stdbool.h> //uint8_t type
 #include <stdio.h> //uint8_t type
-#include "ssd1306_display.h"
 
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-#if defined(GFX_SMALL_FONT) || defined(GFX_LARGE_FONT)
-#define GFX_HAVE_ALT_FONTS
 #endif
 
 inline uint8_t someSet(uint16_t flags, uint16_t mask) {
@@ -29,6 +24,53 @@ inline uint8_t allSet(uint16_t flags, uint16_t mask) {
 inline uint8_t noneSet(uint16_t flags, uint16_t mask) {
     return !(flags & mask);
 }
+
+#ifndef GFX_OLED_TYPE
+#define GFX_OLED_TYPE 91
+#endif
+
+#ifndef SSD1306_CONFIG_FLAGS
+#define SSD1306_CONFIG_FLAGS SSD1306_SWITCHCAPVCC
+#endif
+
+// this adds about 650 bytes to flash use and 7 bytes of RAM, but more than doubles character output to screen
+#ifndef GFX_NO_BIT_BLIT
+#define GFX_BIT_BLIT
+#endif
+
+#ifndef CONSOLE_DEBUG
+#ifdef __cplusplus
+typedef const __FlashStringHelper *PGM_STR;
+#endif
+
+#else
+typedef const char *PGM_STR;
+
+#ifndef GFX_SMALL_FONT
+#define GFX_SMALL_FONT
+#endif
+
+#ifndef GFX_LARGE_FONT
+#define GFX_LARGE_FONT
+#endif
+
+typedef const char *PGM_P;
+typedef const char *PGM_STR;
+#define PSTR(s)  s
+#endif
+
+// adds 646 bytes of FLASH use. Adds smoother double size chars for '0'-'9', 'm', 'l', and '.'
+//#define GFX_LARGE_FONT
+
+// adds 372 bytes of FLASH use. Adds 3x6 chars for '0'-'9', 'm', 'l', and '.'
+//#define GFX_SMALL_FONT
+
+#if defined(GFX_SMALL_FONT) || defined(GFX_LARGE_FONT)
+#define GFX_HAVE_ALT_FONTS
+#endif
+
+typedef int16_t coord_x;
+typedef int8_t coord_y;
 
 // 128x64 display constants
 #define GFX_096_XSIZE   128
@@ -49,10 +91,6 @@ inline uint8_t noneSet(uint16_t flags, uint16_t mask) {
 #define GFX_CHAR_HEIGHT 8
 
 extern const uint8_t FONT_CHARS[96][GFX_FONT_X_PIXELS] PROGMEM;
-
-#ifndef GFX_OLED_TYPE
-#define GFX_OLED_TYPE 91
-#endif
 
 #if GFX_OLED_TYPE == 96
 #define DISPLAY_XSIZE   GFX_096_XSIZE
@@ -198,7 +236,7 @@ extern const uint8_t LARGE_CHAR_SET[] PROGMEM;
 extern FILE gfx_out;
 
 // initialization
-extern void gfx_init_display();
+extern void gfx_init_display(uint8_t contrast);
 // display functions
 extern void gfx_set_inverted();
 extern void gfx_clear_inverted();
@@ -326,6 +364,8 @@ extern void gfx_fputs(const char *str);
 extern void gfx_fputs_P(PGM_P str);
 extern void gfx_fputs_lpad(const char *str, char ch, uint8_t pad);
 extern void gfx_fputs_lpad_P(PGM_P str, char ch, uint8_t pad);
+extern int gfx_printf(const char *fmt, ...);
+extern int gfx_printf_P(PGM_P fmt, ...);
 extern void gfx_print_float(double number, uint8_t digits);
 extern void gfx_print_int32_lpad(int32_t n, uint8_t radix, uint8_t pad, char ch);
 extern void gfx_print_int32(int32_t i);

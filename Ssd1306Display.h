@@ -7,7 +7,6 @@
 #ifndef SSD1306_SSD1306DISPLAY_H
 #define SSD1306_SSD1306DISPLAY_H
 
-#include "ssd1306_display.h"
 #include "ssd1306_gfx.h"
 
 #ifndef DEC
@@ -40,7 +39,7 @@ class Ssd1306Display {
 public:
     // backward compatibility for basics
     inline bool begin(uint8_t switchVcc = 0, uint8_t i2caddr = 0) {
-        initDisplay();
+        initDisplay(80);
         return true;
     }
 
@@ -105,7 +104,7 @@ public:
 
     // wrapper on C implementation
     // @formatter:off
-    inline void initDisplay() { gfx_init_display(); }
+    inline void initDisplay(uint8_t contrast) { gfx_init_display(contrast); }
     inline void displayOff() { gfx_display_off(); }
     inline void displayOn() { gfx_display_on(); }
     inline void clearScreen() { gfx_clear_screen(); }

@@ -1,7 +1,6 @@
 #include "Arduino.h"
-#include "ssd1306.h"
-#include "ssd1306_display.h"
 #include "ssd1306_gfx.h"
+#include "ssd1306.h"
 #include "ssd1306_cmd.h"
 
 // Based on code from:
@@ -28,7 +27,7 @@ gfx_display_buffer_t gfx_display_data = { 0x40 };  // Co = 0, D/C = 1
 #define SSD1306_TWINT_DATA_AFTER_FIRST      0x08
 static uint8_t gfx_twint;
 
-void gfx_init_display() {
+void gfx_init_display(uint8_t contrast) {
     gfx_send_pos = 0;
     gfx_twint = SSD1306_TWINT_COMMANDS_AFTER_INIT | SSD1306_TWINT_DATA;
 
@@ -71,12 +70,12 @@ void gfx_init_display() {
 #if DISPLAY_YSIZE == 32
 
     static const uint8_t PROGMEM init4a[] = {
-            SSD1306_SETCOMPINS,                 // 0xDA, b4 - 0 normal seq pin config, 1 - alternative com pin config, b5 - 0 disable com left/right remap, 1 - enable remap
+            SSD1306_SETCOMPINS,                 // 0xDA, b4 - 0 normal seq id config, 1 - alternative com id config, b5 - 0 disable com left/right remap, 1 - enable remap
             0x02,                               // sequential, left/right remap disabled
             SSD1306_SETCONTRAST,                // 0x81
-            0x30
     };
     gfx_twi_pgm_byte_list(init4a, sizeof(init4a));
+    gfx_twi_byte(contrast);
 
 #elif DISPLAY_YSIZE == 64
 
@@ -224,6 +223,7 @@ void gfx_twi_pgm_byte_list(const uint8_t *bytes, uint16_t count) {
         gfx_twi_byte(pgm_read_byte(bytes++));
     }
 }
+
 // Display functions
 void gfx_set_inverted() {
     gfx_send_cmd(SSD1306_INVERTDISPLAY);
@@ -235,6 +235,9 @@ void gfx_clear_inverted() {
 
 void gfx_display_off() {
     gfx_send_cmd(SSD1306_DISPLAYOFF);
+#ifdef INCLUDE_TWI_INT
+    twiint_flush(); // wait for it to complete
+#endif // INCLUDE_TWI_INT
 }
 
 void gfx_display_on() {
@@ -247,9 +250,10 @@ void gfx_set_contrast(uint8_t contrast) {
     gfx_twi_byte(contrast);
     gfx_end_twi_frame();
 }
+
 #else
 
-void gfx_init_display() {
+void gfx_init_display(uint8_t contrast) {
 }
 
 // Display functions

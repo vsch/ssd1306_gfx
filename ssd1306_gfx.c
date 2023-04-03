@@ -3,7 +3,6 @@
 #include <stdbool.h>
 #include <math.h>
 #include <assert.h>
-#include "ssd1306_display.h"
 #include "Arduino.h"
 
 #include "ssd1306_gfx.h"
@@ -201,10 +200,10 @@ const uint8_t LARGE_CHAR_SET[] PROGMEM = {
 };
 #endif // GFX_LARGE_FONT
 
-uint8_t gfx_flags;              // option flags
-uint8_t gfx_text_flags;              // option flags
-int8_t gfx_char_x_size;              // updated when text size flags change
-int8_t gfx_char_y_size;              // updated when text size flags change
+uint8_t gfx_flags;              // option wantFlags
+uint8_t gfx_text_flags;              // option wantFlags
+int8_t gfx_char_x_size;              // updated when text size wantFlags change
+int8_t gfx_char_y_size;              // updated when text size wantFlags change
 
 coord_x gfx_cursor_x;                 // cursor
 coord_x gfx_last_cursor_x;                 // cursor after last __to operation
@@ -242,8 +241,8 @@ uint32_t gfx_put_pixel_count;
 void gfx_clear_screen() {
     gfx_flags = 0;
     gfx_text_flags = 0;
-    gfx_char_x_size = CHAR_WIDTH;    // updated when text size flags change
-    gfx_char_y_size = CHAR_HEIGHT;   // updated when text size flags change
+    gfx_char_x_size = CHAR_WIDTH;    // updated when text size wantFlags change
+    gfx_char_y_size = CHAR_HEIGHT;   // updated when text size wantFlags change
     gfx_fore_color = GFX_COLOR_WHITE;
     gfx_back_color = GFX_COLOR_NONE;
     gfx_gap_color = GFX_COLOR_NONE;
@@ -848,24 +847,65 @@ void gfx_round_rect(coord_x x1, coord_y y1, int8_t r, uint8_t octants) {
     gfx_cursor_y -= r; // y0
 }
 
-void gfx_bitmap(const uint8_t bitmap[], uint8_t w, uint8_t h) {
-    coord_y y = gfx_cursor_y;
+#ifdef GFX_BIT_BLIT
 
-    uint8_t byteWidth = (w + 7) / 8; // Bitmap scanline pad = whole byte
+// NOTE: this is rotated by -90° since bytes are vertical and a transpose is more difficult to envision
+void gfx_bitmap(const uint8_t bitmap[], uint8_t w, uint8_t h) {
+    uint8_t chunk[32]; // chunk of full rows
+
+    uint8_t byteHeight = (h + 7) / 8; // Bitmap scanline pad = whole byte
+    uint8_t chunkHeight = byteHeight * 8; // height in full bytes
+    uint8_t chunkWidth = ((w + 31) / 32) * 32; // width in full chunks
+
+    coord_x x0 = gfx_cursor_x;
+    coord_y y0 = gfx_cursor_y;
+    for (uint8_t y = 0; y < chunkHeight; y += 8) {
+        for (uint8_t x = 0; x < chunkWidth; x += 32) {
+            // read bitmap chunk from PROGMEM, read
+            uint8_t cw = x + 32 > w ? w - x : 32;
+            uint8_t ch = y + 8 > h ? h - y : 8;
+
+            for (uint8_t ib = 0; ib < cw; ib++) {
+                uint8_t b = pgm_read_byte(&bitmap[(w - (x + ib) - 1) * byteHeight + y / 8]);
+                // reverse bits: b = 76543210
+                b = ((b & 0xf0) >> 4) | ((b & 0x0f) << 4);   // ----7654 | 3210---- -> 32107654
+                b = ((b & 0xCC) >> 2) | ((b & 0x33) << 2);   // --32--76 | 10--54-- -> 10325476
+                b = ((b & 0xAA) >> 1) | ((b & 0x55) << 1);   // -1-3-5-7 | 0-2-4-6- -> 01234567
+                chunk[ib] = b;
+            }
+            gfx_cursor_x = x0 + x;
+            gfx_cursor_y = y0 + y;
+            gfx_bitBlit(chunk, cw, ch);
+        }
+    }
+
+    gfx_cursor_x = x0 + w;
+    gfx_cursor_y = y0;
+}
+
+#else
+
+// NOTE: this is rotated by -90° since bytes are vertical and a transpose is more difficult to envision
+void gfx_bitmap(const uint8_t bitmap[], uint8_t w, uint8_t h) {
+    uint8_t byteHeight = (h + 7) / 8; // Bitmap scanline pad = whole byte
     uint8_t byte = 0;
 
-    for (uint8_t j = 0; j < h; j++, y++) {
-        for (uint8_t i = 0; i < w; i++) {
-            if (i & 7) byte <<= 1;
-            else byte = pgm_read_byte(&bitmap[j * byteWidth + i / 8]);
+    for (uint8_t x = 0; x < w; x++) {
+        for (uint8_t y = 0; y < h; y++) {
+            if (y & 7) byte <<= 1;
+            else byte = pgm_read_byte(&bitmap[(w - x - 1) * byteHeight + y / 8]);
 
             color_t color = (byte & 0x80) ? gfx_fore_color : gfx_back_color;
             if (color != GFX_COLOR_NONE) {
-                gfx_set_pixel(gfx_cursor_x + i, y, color);
+                gfx_set_pixel(gfx_cursor_x + x, gfx_cursor_y + y, color);
             }
         }
     }
+
+    gfx_cursor_x += w;
 }
+
+#endif
 
 #if 0
 // TEST: not done or debugged
@@ -1017,7 +1057,7 @@ bool gfx_findSubstitutedChar(
     uint8_t flags = pgm_read_byte(pSet + (ch >> 3));
     bool chFlag = flags & (1 << (ch & 7));
 #ifdef SERIAL_DEBUG_FONTS
-    printf_P(PSTR("Char 0x%02X flags: 0x%02X, %S.\n"), (uint16_t)ch, flags, chFlag ? PST(" found") : PSTR(" not found"));
+    printf_P(PSTR("Char 0x%02X wantFlags: 0x%02X, %S.\n"), (uint16_t)ch, wantFlags, chFlag ? PST(" found") : PSTR(" not found"));
 #endif
 
     if (chFlag) {
@@ -1133,22 +1173,27 @@ static void bitBlt() {
 // bit blit maximum 8 rows of data to display buffer
 void gfx_bitBlit(const uint8_t *pData, uint8_t xSize, uint8_t ySize) {
     coord_x x0 = gfx_cursor_x;
+    coord_y y0 = gfx_cursor_y;
 
     if (x0 < 0) {
+        if (xSize <= -x0) return;
         pData += -x0;
         xSize -= -x0;
         x0 = 0;
     }
     blt_x0 = x0;
 
-    coord_y y0 = gfx_cursor_y;
     int8_t blt_yPreOffset = 0;
 
     if (y0 < 0) {
+        if (ySize <= -y0) return;
         ySize -= -y0;
         blt_yPreOffset = y0;
         y0 = 0;
     }
+
+    if (x0 >= DISPLAY_XSIZE) return;
+    if (y0 >= DISPLAY_YSIZE) return;
 
     blt_yOffset = y0 & 7;
     blt_yPage = y0 >> 3;

@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
-#include "ssd1306_display.h"
+#include "ssd1306_gfx.h"
 
 #ifdef __cplusplus
 extern "C" {
