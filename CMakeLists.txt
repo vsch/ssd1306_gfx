@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.0)
-set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/cmake/ArduinoToolchain.cmake)
+set(CMAKE_TOOLCHAIN_FILE /Users/vlad/src/projects/CLionArduinoPlugin/src/com/vladsch/clionarduinoplugin/resources/arduino-cmake/cmake/ArduinoToolchain.cmake)
 set(CMAKE_CXX_STANDARD 98)
 set(PROJECT_NAME ssd1306_gfx)
 
@@ -62,8 +62,3 @@ generate_arduino_firmware(${PROJECT_NAME})
 
 print_board_list()
 print_programmer_list()
-
-# Configure ATmega328p Library options, it knows nothing of the Arduino CMake options.
-add_compile_definitions(BAUD=${pro.upload.speed})
-add_compile_definitions(TWI_FREQUENCY=400000)
-
