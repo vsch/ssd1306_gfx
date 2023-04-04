@@ -19,25 +19,25 @@ set(${PROJECT_NAME}_BOARD pro)
 project(${PROJECT_NAME})
 
 add_compile_definitions(INCLUDE_TWI_INT)
-set(TWI_C_FILES twi.c)
-set(TWI_H_FILES twi.h)
+set(TWI_C_FILES src/twi.c)
+set(TWI_H_FILES src/twi.h)
 
 # Define additional source and header files or default arduino sketch files
 set(${PROJECT_NAME}_SRCS
-        print.c
-        Ssd1306Display.cpp
-        ssd1306.c
-        ssd1306_gfx.c
-        ssd1306_print.c
-        ssd1306_main.c
+        src/print.c
+        src/Ssd1306Display.cpp
+        src/ssd1306.c
+        src/ssd1306_gfx.c
+        src/ssd1306_print.c
+        ssd1306_test.ino
         ${TWI_C_FILES}
         )
 set(${PROJECT_NAME}_HDRS
-        print.h
-        Ssd1306Display.h
-        ssd1306.h
-        ssd1306_cmd.h
-        ssd1306_gfx.h
+        src/print.h
+        src/Ssd1306Display.h
+        src/ssd1306.h
+        src/ssd1306_cmd.h
+        src/ssd1306_gfx.h
         ${TWI_H_FILES}
         )
 
@@ -48,7 +48,7 @@ link_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 # For nested library sources replace ${LIB_NAME} with library name for each library
 # set(_RECURSE true)
 
-#set(${CMAKE_PROJECT_NAME}_SKETCH ssd1306_test.ino)
+set(${CMAKE_PROJECT_NAME}_SKETCH ssd1306_test.ino)
 
 #### Additional settings for programmer. From programmers.txt
 set(${PROJECT_NAME}_PROGRAMMER avrispmkii)
