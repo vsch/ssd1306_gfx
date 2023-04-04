@@ -1054,8 +1054,8 @@ bool gfx_findSubstitutedChar(
         const uint8_t *pSet,
         const char **pBits
 ) {
-    uint8_t flags = pgm_read_byte(pSet + (ch >> 3));
-    bool chFlag = flags & (1 << (ch & 7));
+    uint8_t menuFlags = pgm_read_byte(pSet + (ch >> 3));
+    bool chFlag = menuFlags & (1 << (ch & 7));
 #ifdef SERIAL_DEBUG_FONTS
     printf_P(PSTR("Char 0x%02X wantFlags: 0x%02X, %S.\n"), (uint16_t)ch, wantFlags, chFlag ? PST(" found") : PSTR(" not found"));
 #endif
