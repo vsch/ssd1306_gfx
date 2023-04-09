@@ -1904,8 +1904,6 @@ void gfx_print_display(FILE *stream) {
     }
     putc('/', stream);
     putc('\n', stream);
-
-    putc('\0', stream);
 };
 
 #ifdef CONSOLE_DEBUG
