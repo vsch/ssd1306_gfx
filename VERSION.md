@@ -2,7 +2,7 @@
 
 [TOC]: #
 
-- [1.20 Next](#120-next)
+- [1.20](#120)
 - [1.18](#118)
 - [1.16](#116)
 - [1.14](#114)
@@ -16,7 +16,7 @@
 - [0.2](#02)
 
 
-## 1.20 Next
+## 1.20
 
 * Add: `void gfx_print_display(FILE *stream)` to dump screen as ASCII to
   given stream.
