@@ -58,6 +58,10 @@ set(${PROJECT_NAME}_PROGRAMMER avrispmkii)
 set(${PROJECT_NAME}_PORT /dev/cu.usbserial-00000000)
 set(pro.upload.speed 57600)
 
+# CAUTION: Need this for TWI & UART, Configure ATmega328p Library options, it knows nothing of the Arduino CMake options.
+add_compile_definitions(BAUD=${pro.upload.speed})
+add_compile_definitions(TWI_FREQUENCY=400000)
+
 ## Verbose build process
 set(${PROJECT_NAME}_AFLAGS -v)
 
