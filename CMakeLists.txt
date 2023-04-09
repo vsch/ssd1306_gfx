@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.0)
-set(CMAKE_TOOLCHAIN_FILE /Users/vlad/src/projects/CLionArduinoPlugin/src/com/vladsch/clionarduinoplugin/resources/arduino-cmake/cmake/ArduinoToolchain.cmake)
+set(CMAKE_TOOLCHAIN_FILE /Users/vlad/src/arduino-cmake/ArduinoToolchain.cmake)
 set(CMAKE_CXX_STANDARD 98)
 set(PROJECT_NAME ssd1306_gfx)
 
@@ -40,10 +40,13 @@ set(${PROJECT_NAME}_HDRS
         src/ssd1306_gfx.h
         ${TWI_H_FILES}
         )
+# set(${PROJECT_NAME}_LIBS)
 
 ### Additional static libraries to include in the target.
 #set(${PROJECT_NAME}_LIBS/..)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
+# add_subdirectory()
+# set(${PROJECT_NAME}_SKETCH ssd1306_gfx.ino)
 
 # For nested library sources replace ${LIB_NAME} with library name for each library
 # set(_RECURSE true)

@@ -1877,6 +1877,37 @@ void gfx_progress_bar_to(uint8_t pbFlags, uint8_t progress, coord_x x1, coord_y 
     }
 }
 
+void gfx_print_display(FILE *stream) {
+    gfx_end_text_spc_wrap();
+
+    putc('/', stream);
+    for (int i = 0; i < DISPLAY_XSIZE; i++) {
+        putc('-', stream);
+    }
+    putc('\\', stream);
+    putc('\n', stream);
+
+    for (int pg = 0; pg < DISPLAY_YSIZE / 8; pg++) {
+        for (int b = 1; b < 256; b *= 2) {
+            putc('|', stream);
+            for (int c = 0; c < DISPLAY_XSIZE; c++) {
+                putc(gfx_display_buffer[pg][c] & b ? '@' : ' ', stream);
+            }
+            putc('|', stream);
+            putc('\n', stream);
+        }
+    }
+
+    putc('\\', stream);
+    for (int i = 0; i < DISPLAY_XSIZE; i++) {
+        putc('-', stream);
+    }
+    putc('/', stream);
+    putc('\n', stream);
+
+    putc('\0', stream);
+};
+
 #ifdef CONSOLE_DEBUG
 
 gfx_display_buffer_t gfx_display_data;

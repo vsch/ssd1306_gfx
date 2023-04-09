@@ -326,6 +326,7 @@ extern void gfx_clip_to_screen(coord_x *x, coord_y *y);
 #define PB_VERTICAL 0x02
 
 extern void gfx_progress_bar_to(uint8_t pbFlags, uint8_t progress, coord_x x1, coord_y y1, color_t undoneColor);
+extern void gfx_print_display(FILE *stream);
 
 #ifdef GFX_FANCY
 extern void gfx_ellipse(int8_t width, int8_t height);         // draw ellipse centered on cursor, outline in foreground, fill in background
