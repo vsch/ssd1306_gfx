@@ -2,6 +2,7 @@
 
 [TOC]: #
 
+- [1.22](#122)
 - [1.20](#120)
 - [1.18](#118)
 - [1.16](#116)
@@ -16,11 +17,16 @@
 - [0.2](#02)
 
 
+## 1.22
+
+* Add: `GFX_NO_LINE_PATTERNS` to remove any line pattern related code
+  and save 420 bytes of flash memory.
+* Fix: change large font `2`.
+
 ## 1.20
 
 * Add: `void gfx_print_display(FILE *stream)` to dump screen as ASCII to
   given stream.
-* Add: Progress bar drawing `gfx_progress_bar_to(...)`
 
 ## 1.18
 

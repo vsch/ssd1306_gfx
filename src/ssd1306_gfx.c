@@ -164,8 +164,8 @@ const uint8_t LARGE_CHARS[13][GFX_LARGE_X_PIXELS * GFX_LARGE_Y_ROWS] PROGMEM = {
         0x0F, 0x1F, 0x36, 0x33, 0x31, 0x30, 0x30, 0x30, 0x1F, 0x0F,
         0x00, 0x00, 0x0C, 0x0C, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, // 0x31 - '1'
         0x00, 0x00, 0x30, 0x30, 0x3F, 0x3F, 0x30, 0x30, 0x00, 0x00,
-        0x0C, 0x0E, 0x03, 0x03, 0x03, 0x83, 0x83, 0x43, 0x7E, 0x3C, // 0x32 - '2'
-        0x30, 0x38, 0x3C, 0x36, 0x33, 0x31, 0x30, 0x30, 0x30, 0x30,
+        0x0C, 0x0E, 0x03, 0x03, 0x83, 0x83, 0xC3, 0x43, 0x7E, 0x3C, // 0x32 - '2'
+        0x38, 0x3C, 0x36, 0x33, 0x31, 0x30, 0x30, 0x30, 0x30, 0x30,
         0x03, 0x03, 0x03, 0x23, 0x33, 0x33, 0x7B, 0xCF, 0x87, 0x03, // 0x33 - '3'
         0x0C, 0x1C, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x1F, 0x0F,
         0xC0, 0xE0, 0x30, 0x18, 0x0C, 0x0E, 0xFF, 0xFF, 0x00, 0x00, // 0x34 - '4'
@@ -217,12 +217,14 @@ coord_y gfx_max_y;                // max Y value when printing a string and wrap
 coord_y gfx_min_y;                // max Y value when printing a string and wrapping
 
 color_t gfx_fore_color;
-color_t gfx_gap_color;
 color_t gfx_back_color;
 
+#ifndef GFX_NO_LINE_PATTERNS
+color_t gfx_gap_color;
 uint8_t gfx_dash_bits;            // solid/dash/dot pattern for line outlines (not text)
 uint8_t gfx_dash_size;            // solid/dash/dot pattern for line outlines (not text)
 uint8_t gfx_dashOffset;          // solid/dash/dot pattern for line outlines (not text)
+#endif // GFX_NO_LINE_PATTERNS
 
 uint8_t gfx_wrap_buff_pos; // next character in buffer
 char gfx_wrap_buff[GFX_WRAP_BUFFER_SIZE]; // characters buffered when looking for space on which to possibly break
@@ -245,13 +247,10 @@ void gfx_clear_screen() {
     gfx_char_y_size = CHAR_HEIGHT;   // updated when text size wantFlags change
     gfx_fore_color = GFX_COLOR_WHITE;
     gfx_back_color = GFX_COLOR_NONE;
-    gfx_gap_color = GFX_COLOR_NONE;
-    gfx_dash_bits = GFX_BITS_DASH_NONE;
-    gfx_dash_size = GFX_SIZE_DASH_NONE;
     gfx_cursor_x = 0;
     gfx_cursor_y = 0;
-    gfx_last_cursor_x = 0x8000;
-    gfx_last_cursor_y = 0x80;
+    gfx_last_cursor_x = (coord_x) 0x8000;
+    gfx_last_cursor_y = (coord_y) 0x80;
     gfx_margin_left = 0;
     gfx_margin_right = DISPLAY_XSIZE;
     gfx_wrap_buff_pos = 0;
@@ -259,7 +258,12 @@ void gfx_clear_screen() {
     gfx_min_x = 0;
     gfx_max_y = 0;
     gfx_min_y = 0;
+#ifndef GFX_NO_LINE_PATTERNS
+    gfx_gap_color = GFX_COLOR_NONE;
+    gfx_dash_bits = GFX_BITS_DASH_NONE;
+    gfx_dash_size = GFX_SIZE_DASH_NONE;
     gfx_dashOffset = 0;
+#endif // GFX_NO_LINE_PATTERNS
     memset(gfx_display_buffer, 0, sizeof(gfx_display_buffer));
 
 #ifdef SERIAL_DEBUG_GFX_STATS
@@ -306,6 +310,7 @@ void gfx_set_pixel(uint8_t x, coord_y y, color_t color) {
     }
 }
 
+#ifndef GFX_NO_LINE_PATTERNS
 void gfx_set_line_pattern(uint16_t pattern) {
     gfx_dash_bits = GET_DASH_BITS(pattern);
     gfx_dash_size = GET_DASH_SIZE(pattern);
@@ -335,13 +340,6 @@ uint8_t gfx_have_line_pattern() {
     return gfx_dash_bits != GFX_BITS_DASH_NONE || gfx_dash_size != GFX_BITS_DASH_NONE;
 }
 
-void gfx_hline(coord_x x0, coord_y y0, coord_x x1, color_t color) {
-    gfx_normalize_x(&x0, &x1);
-    while (x0 <= x1) {
-        gfx_set_pixel(x0++, y0, color);
-    }
-}
-
 void gfx_hline_dashed(coord_x x0, coord_y y0, coord_x x1) {
     if (!gfx_have_line_pattern()) {
         gfx_hline(x0, y0, x1, gfx_fore_color);
@@ -352,6 +350,26 @@ void gfx_hline_dashed(coord_x x0, coord_y y0, coord_x x1) {
         }
     }
 }
+
+void gfx_vline_dashed(coord_x x0, coord_y y0, coord_y y1) {
+    if (!gfx_have_line_pattern()) {
+        gfx_vline(x0, y0, y1, gfx_fore_color);
+    } else {
+        gfx_normalize_y(&y0, &y1);
+        while (y0 <= y1) {
+            gfx_set_pixel(x0, y0++, gfx_next_dash_color());
+        }
+    }
+}
+#endif // GFX_NO_LINE_PATTERNS
+
+void gfx_hline(coord_x x0, coord_y y0, coord_x x1, color_t color) {
+    gfx_normalize_x(&x0, &x1);
+    while (x0 <= x1) {
+        gfx_set_pixel(x0++, y0, color);
+    }
+}
+
 
 // draws a vertical line in given color
 void gfx_vline(coord_x x0, coord_y y0, coord_y y1, color_t color) {
@@ -404,17 +422,6 @@ void gfx_vline(coord_x x0, coord_y y0, coord_y y1, color_t color) {
         gfx_set_pixel(x0, y0++, color);
     }
 #endif
-}
-
-void gfx_vline_dashed(coord_x x0, coord_y y0, coord_y y1) {
-    if (!gfx_have_line_pattern()) {
-        gfx_vline(x0, y0, y1, gfx_fore_color);
-    } else {
-        gfx_normalize_y(&y0, &y1);
-        while (y0 <= y1) {
-            gfx_set_pixel(x0, y0++, gfx_next_dash_color());
-        }
-    }
 }
 
 void gfx_hline_to(coord_x x1) {
@@ -576,17 +583,21 @@ void gfx_rect(coord_x x1, coord_y y1) {
         gfx_vlines(x0 + 1, y0 + 1, x1 - 1, y1 - 1, gfx_back_color);
     }
 
+#ifndef GFX_NO_LINE_PATTERNS
     if (gfx_have_line_pattern()) {
         gfx_hline_dashed(x0, y0, x1);
         gfx_vline_dashed(x1, y0 + 1, y1);
         gfx_hline_dashed(x1 - 1, y1, x0);
         gfx_vline_dashed(x0, y1 - 1, y0 + 1);
     } else {
+#endif // GFX_NO_LINE_PATTERNS
         gfx_hline(x0, y0, x1, gfx_fore_color);
         gfx_vline(x1, y0 + 1, y1, gfx_fore_color);
         gfx_hline(x1 - 1, y1, x0, gfx_fore_color);
         gfx_vline(x0, y1 - 1, y0 + 1, gfx_fore_color);
+#ifndef GFX_NO_LINE_PATTERNS
     }
+#endif // GFX_NO_LINE_PATTERNS
 }
 
 // Function for circle-generation

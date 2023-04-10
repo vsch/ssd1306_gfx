@@ -46,14 +46,6 @@ typedef const __FlashStringHelper *PGM_STR;
 #else
 typedef const char *PGM_STR;
 
-#ifndef GFX_SMALL_FONT
-#define GFX_SMALL_FONT
-#endif
-
-#ifndef GFX_LARGE_FONT
-#define GFX_LARGE_FONT
-#endif
-
 typedef const char *PGM_P;
 typedef const char *PGM_STR;
 #define PSTR(s)  s
@@ -138,13 +130,6 @@ typedef uint8_t color_t;
 
 // HACK: Only works if sizes are powers of two
 #define COORDS_IN_DISPLAY(x, y)   (!((x) & ~(DISPLAY_XSIZE - 1)) && !((y) & ~(DISPLAY_YSIZE - 1)))
-
-#define GFX_DASH_NONE        LINE_PATTERN(GFX_BITS_DASH_NONE, GFX_SIZE_DASH_NONE)
-#define GFX_DOT              LINE_PATTERN(GFX_BITS_DOT, GFX_SIZE_DOT)
-#define GFX_SPARSE_DOT       LINE_PATTERN(GFX_BITS_SPARSE_DOT, GFX_SIZE_SPARSE_DOT)
-#define GFX_DASH             LINE_PATTERN(GFX_BITS_DASH, GFX_SIZE_DASH)
-#define GFX_LONG_DASH        LINE_PATTERN(GFX_BITS_LONG_DASH, GFX_SIZE_LONG_DASH)
-#define GFX_DASH_DOT         LINE_PATTERN(GFX_BITS_DASH_DOT, GFX_SIZE_DASH_DOT)
 
 // octants for circle arcs are:
 //         -x -y 128    1 +x -y
@@ -233,7 +218,7 @@ extern const uint8_t LARGE_CHAR_SET[] PROGMEM;
 #endif // GFX_LARGE_FONT
 
 // stream outputs to ssd1306 display
-extern FILE gfx_out;
+extern FILE gfx_out; // NOLINT(misc-non-copyable-objects)
 
 // initialization
 extern void gfx_init_display(uint8_t contrast);
@@ -266,12 +251,21 @@ extern char gfx_wrap_buff[GFX_WRAP_BUFFER_SIZE]; // characters buffered when loo
 extern uint8_t gfx_wrap_buff_pos; // next character in buffer
 
 extern color_t gfx_fore_color;
-extern color_t gfx_gap_color;            // dash gap color
 extern color_t gfx_back_color;
 
+#ifndef GFX_NO_LINE_PATTERNS
+#define GFX_DASH_NONE        LINE_PATTERN(GFX_BITS_DASH_NONE, GFX_SIZE_DASH_NONE)
+#define GFX_DOT              LINE_PATTERN(GFX_BITS_DOT, GFX_SIZE_DOT)
+#define GFX_SPARSE_DOT       LINE_PATTERN(GFX_BITS_SPARSE_DOT, GFX_SIZE_SPARSE_DOT)
+#define GFX_DASH             LINE_PATTERN(GFX_BITS_DASH, GFX_SIZE_DASH)
+#define GFX_LONG_DASH        LINE_PATTERN(GFX_BITS_LONG_DASH, GFX_SIZE_LONG_DASH)
+#define GFX_DASH_DOT         LINE_PATTERN(GFX_BITS_DASH_DOT, GFX_SIZE_DASH_DOT)
+
+extern color_t gfx_gap_color;            // dash gap color
 extern uint8_t gfx_dash_bits;            // solid/dash/dot pattern for line outlines (not text)
 extern uint8_t gfx_dash_size;            // solid/dash/dot pattern for line outlines (not text)
 extern uint8_t gfx_dashOffset;          // solid/dash/dot pattern for line outlines (not text)
+#endif // GFX_NO_LINE_PATTERNS
 
 typedef struct gfx_display_buffer {
     const uint8_t twi_data;
@@ -286,11 +280,21 @@ extern void gfx_clear_screen();
 
 // user display operations
 // primitives used in library
+#ifndef GFX_NO_LINE_PATTERNS
 extern color_t gfx_next_dash_color();
 extern bool gfx_next_dash_bit();
 extern void gfx_set_line_pattern(uint16_t pattern);
 extern uint16_t gfx_get_line_pattern();
 extern uint8_t gfx_have_line_pattern();
+extern void gfx_hline_dashed(coord_x x0, coord_y y0, coord_x x1);
+extern void gfx_vline_dashed(coord_x x0, coord_y y0, coord_y y1);
+#else
+#define gfx_next_dash_color()   gfx_fore_color
+#define gfx_next_dash_bit()     1
+#define gfx_have_line_pattern() 0
+#define gfx_hline_dashed(x0, y0, x1) gfx_hline((x0), (y0), (x1), gfx_fore_color)
+#define gfx_vline_dashed(x0, y0, y1) gfx_vline((x0), (y0), (y1), gfx_fore_color)
+#endif // GFX_NO_LINE_PATTERNS
 
 extern void gfx_set_pixel(uint8_t x, coord_y y, color_t color);
 extern void gfx_draw_circle_octants(coord_x cx, coord_y cy, coord_x x, coord_y y, uint8_t octs);
@@ -300,9 +304,7 @@ typedef void (*fp_circle_octants)(coord_x, coord_y, coord_x, coord_y, uint8_t);
 extern void gfx_circle_octants(int8_t r, uint8_t octants, fp_circle_octants drawOctants);
 
 extern void gfx_hline(coord_x x0, coord_y y0, coord_x x1, color_t color);
-extern void gfx_hline_dashed(coord_x x0, coord_y y0, coord_x x1);
 extern void gfx_vline(coord_x x0, coord_y y0, coord_y y1, color_t color);
-extern void gfx_vline_dashed(coord_x x0, coord_y y0, coord_y y1);
 extern void gfx_hline_to(coord_x x1);            // draw horizontal line using foreground
 extern void gfx_vline_to(coord_y y1);            // draw vertical line using foreground
 extern void gfx_line_to(coord_x x1, coord_y y1); // draw line using foreground

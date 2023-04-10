@@ -95,12 +95,19 @@ public:
 
     PROPERTY(color_t, ForeColor, gfx_fore_color);
 
-    PROPERTY(color_t, GapColor, gfx_gap_color);            // dash gap color
     PROPERTY(color_t, BackColor, gfx_back_color);
 
+#ifndef GFX_NO_LINE_PATTERNS
+    PROPERTY(color_t, GapColor, gfx_gap_color);            // dash gap color
     PROPERTY(uint8_t, DashBits, gfx_dash_bits);            // solid/dash/dot pattern for line outlines (not text)
     PROPERTY(uint8_t, DashSize, gfx_dash_size);            // solid/dash/dot pattern for line outlines (not text)
     PROPERTY(uint8_t, DashOffset, gfx_dashOffset);          // solid/dash/dot pattern for line outlines (not text)
+    inline void setLinePattern(uint16_t pattern) { gfx_set_line_pattern(pattern); }
+    inline uint16_t getLinePattern() { return gfx_get_line_pattern(); }
+    inline uint8_t nextDashPixelColor() { return gfx_next_dash_color(); }
+    inline uint8_t nextDashBit() { return gfx_next_dash_bit(); }
+    inline void setColors(color_t fg, color_t bg, color_t gp) { gfx_fore_color = fg, gfx_back_color = bg, gfx_gap_color = gp; }
+#endif // GFX_NO_LINE_PATTERNS
 
     // wrapper on C implementation
     // @formatter:off
@@ -113,18 +120,13 @@ public:
     inline void setInvertedDisplay() { gfx_set_inverted(); }
     inline void clearInvertedDisplay() { gfx_clear_inverted(); }
     inline void setContrast(uint8_t contrast) { gfx_set_contrast(contrast); }
-    inline void setLinePattern(uint16_t pattern) { gfx_set_line_pattern(pattern); }
-    inline uint16_t getLinePattern() { return gfx_get_line_pattern(); }
 
-    inline uint8_t nextDashPixelColor() { return gfx_next_dash_color(); }
-    inline uint8_t nextDashBit() { return gfx_next_dash_bit(); }
     inline void setPixel(coord_x x, coord_y y, color_t color) { gfx_set_pixel(x, y, color); }
     inline void moveToText(int8_t col, int8_t row) { gfx_set_text_col_row(col, row); }
     inline void setColors(color_t fg, color_t bg) { gfx_fore_color = fg, gfx_back_color = bg; }
-    inline void setColors(color_t fg, color_t bg, color_t gp) { gfx_fore_color = fg, gfx_back_color = bg, gfx_gap_color = gp; }
     inline void moveTo(coord_x x, coord_y y) { gfx_cursor_x = x, gfx_cursor_y = y; }
     inline void moveToX(coord_x x) { gfx_cursor_x = x; }
-    inline void moveToY(coord_y y) { gfx_cursor_x = y; }
+    inline void moveToY(coord_y y) { gfx_cursor_y = y; }
     inline void moveBy(coord_x x, coord_y y) { gfx_cursor_x += x, gfx_cursor_y += y; }
     inline void moveXBy(coord_x x) { gfx_cursor_x += x; }
     inline void moveYBy(coord_y y) { gfx_cursor_y += y; }
