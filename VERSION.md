@@ -24,7 +24,7 @@
   the display buffer. This will cause the library to use a buffer as
   small as one page (128 bytes, vs. 128x32 taking 512 bytes).
   `GFX_UPDATE_PAGES` defines number of pages to use for the buffer.
-  Defaults to 1.
+  Defaults to 1. Adds 228 bytes to FLASH memory use.
 
   To make use of this need to change the way updates are done. They must
   now be done as follows:
@@ -39,8 +39,19 @@
   ```
 
   The display will be redrawn for each page, then that page will be sent
-  to the display. It will take probably two times longer to update the
-  display with 1 page buffer.
+  to the display. It will take about two times longer to update the
+  display with one-page buffer and 50% longer with a two-page buffer,
+  over the time it takes with a full four-page buffer.
+
+* Fix: problem with using TWI int version for initialization. The buffer
+  was being overwritten before it was sent. Reverted files back to
+  ATmega328p library originals and now including blocking or interrupt
+  driven versions depending on `INCLUDE_TWI_INT` macro.
+
+* Fix: found that initializing a single non-zero byte of a multi-byte
+  structure causes an image for the full structure to be allocated in
+  flash, to be used during C initialization. The display buffer was
+  causing 512 bytes of FLASH to be wasted.
 
 ## 1.22
 
