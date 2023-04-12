@@ -19,8 +19,8 @@ set(${PROJECT_NAME}_BOARD pro)
 project(${PROJECT_NAME})
 
 add_compile_definitions(INCLUDE_TWI_INT)
-set(TWI_C_FILES src/twi.c)
-set(TWI_H_FILES src/twi.h)
+set(TWI_C_FILES src/twiint.c)
+set(TWI_H_FILES src/twiint.h)
 
 # Define additional source and header files or default arduino sketch files
 set(${PROJECT_NAME}_SRCS

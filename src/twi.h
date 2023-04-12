@@ -3,12 +3,6 @@
  *
  * Minimalistic, blocking TWI driver.
  *
- * Author:      Vladimir Schneider
- * Hardware:    ATmega328P
- *
- *              Combined blocking and interrupt driven into one file because OLED-091 SSD1306 would not initialize
- *              with the ISR driver alone. However, after initialization using interrupts to send commands works.
- *
  * Author:      Sebastian Goessl
  * Hardware:    ATmega328P
  *
@@ -36,70 +30,34 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+
+
 #ifndef TWI_H_
 #define TWI_H_
 
+
+
 #include <stdbool.h>    //bool type
-#include <stddef.h>     //size_t type
 #include <stdint.h>     //uint8_t type
 #include <stddef.h>     //size_t type
 
+
+
 //default to Fast Mode
 #ifndef TWI_FREQUENCY
-#define TWI_FREQUENCY 400000
+    #define TWI_FREQUENCY 400000
 #endif
 
-/** Slave address with write intend. */
-#define TWI_ADDRESS_W(x)    (((x) << 1) & ~0x01)
-/** Slave address with read intend. */
-#define TWI_ADDRESS_R(x)    (((x) << 1) | 0x01)
+
 
 /**
  * Initializes the TWI hardware for master mode operating at TWI_FREQUENCY.
  * Configures SCL and SDA (PC5 and PC4) as outputs.
  */
-void twi_init(void);
+//void twi_init(uint8_t twbrValue);
+void twi_init();
 
-#ifdef INCLUDE_TWI_INT
 
-/** error count from ISR, to get errors for last twiint_start(), check and reset this to 0 before the call */
-extern uint16_t twint_errors;
-
-/**
-* Returns true if currently a transmission is ongoing.
-*
-* @return if currently a transmission is ongoing
-*/
-bool twiint_busy(void);
-
-/**
- * Blocks until the transmission is completed.
- * Returns last status
- */
-void twiint_flush(void);
-
-/**
- * Starts a TWI transmission writing or reading multiple bytes.
- * The address byte should be provided already manipulated by
- * TWI_ADDRESS_W if data should be written
- * or TWI_ADDRESS_R if data should be read,
- * both slave address in 7-bit format.
- * This function then returns while the transmission continues,
- * getting handled by interrupts routines.
- * The data location must not be changed while the transmission is ongoing
- * as the bytes are read/written as they are needed.
- * When an transmission is still ongoing, this function blocks until the
- * transmission is completed before starting a new one.
- *
- * @param address slave address byte, use the result of TWI_ADDRESS_W for write
- * intend or TWI_ADDRESS_R for read intend applied on the 7-bit address
- * @param data location of the bytes to transmit
- * or location for the read in bytes to be written to
- * @param len number of bytes to write/read
- */
-void twiint_start(uint8_t address, uint8_t *data, size_t len);
-
-#endif
 
 /**
  * Sends a START condition and returns 0 on success.
@@ -107,14 +65,12 @@ void twiint_start(uint8_t address, uint8_t *data, size_t len);
  * @return 0 on success, 1 otherwise
  */
 bool twi_start(void);
-
 /**
  * Sends a REPeated START condition and returns 0 on success.
  *
  * @return 0 on success, 1 otherwise
  */
 bool twi_repStart(void);
-
 /**
  * Sends a STOP condition.
  */
@@ -127,7 +83,6 @@ void twi_stop(void);
  * @return 0 if an acknowledge bit (ACK) was returned, 1 otherwise (NACK)
  */
 bool twi_addressWrite(uint8_t address);
-
 /**
  * Sends the slave address (7 bit, SLA) with intend to read (SLA_R).
  *
@@ -143,7 +98,6 @@ bool twi_addressRead(uint8_t address);
  * @return 0 if an acknowledge bit (ACK) was returned, 1 otherwise (NACK)
  */
 bool twi_write(uint8_t data);
-
 /**
  * Writes multiple bytes (DATA) until all bytes have been written
  * or no acknowledge bit (NACK) has been returned.
@@ -153,7 +107,6 @@ bool twi_write(uint8_t data);
  * @return number of bytes
  * for which acknowledge bits (ACK) have been received (len-1 on success)
  */
-
 size_t twi_writeBurst(uint8_t *data, size_t len);
 /**
  * Reads a single byte (DATA) and sends an acknowledge bit (ACK).
@@ -162,7 +115,6 @@ size_t twi_writeBurst(uint8_t *data, size_t len);
  * @return 0 on success, 1 otherwise
  */
 bool twi_readAck(uint8_t *data);
-
 /**
  * Reads multiple data bytes (DATA) and always sends acknowledge bits (ACK)
  * until all bytes have been read or a read has failed.
@@ -173,14 +125,12 @@ bool twi_readAck(uint8_t *data);
  * that have been read successfully (len on success)
  */
 size_t twi_readAckBurst(uint8_t *data, size_t len);
-
 /**
  * Reads a single byte (DATA) and sends no acknowledge bit (NACK).
  *
  * @param data location where the byte should be written to
  * @return 0 on success, 1 otherwise
  */
-
 bool twi_readNoAck(uint8_t *data);
 /**
  * Reads multiple data bytes (DATA) and never sends an acknowledge bit (NACK)
@@ -191,7 +141,6 @@ bool twi_readNoAck(uint8_t *data);
  * @return the number of bytes
  * that have been read successfully (len on success)
  */
-
 size_t twi_readNoAckBurst(uint8_t *data, size_t len);
 
 /**
@@ -207,7 +156,6 @@ size_t twi_readNoAckBurst(uint8_t *data, size_t len);
  * @return 0 on success, 1 on failure
  */
 bool twi_writeToSlave(uint8_t address, uint8_t *data, size_t len);
-
 /**
  * Reads multiple bytes from a slave
  * (START, SLA_R, DATA+ACK, ..., DATA+ACK, DATA+NACK, STOP).
@@ -222,7 +170,6 @@ bool twi_writeToSlave(uint8_t address, uint8_t *data, size_t len);
  * @return 0 on success, 1 on failure
  */
 bool twi_readFromSlave(uint8_t address, uint8_t *data, size_t len);
-
 /**
  * Writes a single byte followed by multiple bytes to a slave
  * (START, SLA_W, DATA (reg), DATA, ..., DATA, STOP).
@@ -238,8 +185,7 @@ bool twi_readFromSlave(uint8_t address, uint8_t *data, size_t len);
  * @return 0 on success, 1 on failure
  */
 bool twi_writeToSlaveRegister(
-        uint8_t address, uint8_t reg, uint8_t *data, size_t len);
-
+    uint8_t address, uint8_t reg, uint8_t *data, size_t len);
 /**
  * First writes a single byte to a slave and the reads multiple bytes from it
  * (START, SLA_W, DATA (reg),
@@ -256,6 +202,8 @@ bool twi_writeToSlaveRegister(
  * @return 0 on success, 1 on failure
  */
 bool twi_readFromSlaveRegister(
-        uint8_t address, uint8_t reg, uint8_t *data, size_t len);
+    uint8_t address, uint8_t reg, uint8_t *data, size_t len);
+
+
 
 #endif /* TWI_H_ */

@@ -2,6 +2,7 @@
 
 [TOC]: #
 
+- [1.24](#124)
 - [1.22](#122)
 - [1.20](#120)
 - [1.18](#118)
@@ -16,6 +17,30 @@
 - [0.1](#01)
 - [0.2](#02)
 
+
+## 1.24
+
+* Add: `GFX_PAGED_UPDATES` definition to reduce amount of RAM used for
+  the display buffer. This will cause the library to use a buffer as
+  small as one page (128 bytes, vs. 128x32 taking 512 bytes).
+  `GFX_UPDATE_PAGES` defines number of pages to use for the buffer.
+  Defaults to 1.
+
+  To make use of this need to change the way updates are done. They must
+  now be done as follows:
+
+  ```c
+  gfx_clear_screen();
+  for (; gfx_update_page_y1 <= DISPLAY_YSIZE; gfx_start_next_page()) { 
+     your_display_update();
+
+     gfx_display(); 
+  }
+  ```
+
+  The display will be redrawn for each page, then that page will be sent
+  to the display. It will take probably two times longer to update the
+  display with 1 page buffer.
 
 ## 1.22
 

@@ -1,12 +1,7 @@
 /*
  * twi.c
  *
- * Minimalistic, blocking TWI and interrupt driven driver.
- *
- * Author:      Vladimir Schneider
- * Hardware:    ATmega328P
- *
- *              Combined blocking and interrupt driven into one file
+ * Minimalistic, blocking TWI driver.
  *
  * Author:      Sebastian Goessl
  * Hardware:    ATmega328P
@@ -35,10 +30,13 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+
+
 #include <avr/io.h>     //hardware registers
-#include <avr/interrupt.h>  //interrupt vectors
 #include <util/twi.h>   //TWI status masks
 #include "twi.h"
+
+
 
 //default to Arduino oscillator
 #ifndef F_CPU
@@ -55,64 +53,46 @@
 #define TWI_PRESCALER 1
 #define TWPS0_VALUE 0
 #define TWPS1_VALUE 0
-#elif (F_CPU / TWI_FREQUENCY - 16) / (2 * 4) >= 10 \
+#elif (F_CPU / TWI_FREQUENCY - 16) / (2 * 4) >= 2 \
  && (F_CPU / TWI_FREQUENCY - 16) / (2 * 4) <= 0xFF
 #define TWI_PRESCALER 4
 #define TWPS0_VALUE 1
 #define TWPS1_VALUE 0
-#elif (F_CPU/TWI_FREQUENCY - 16) / (2 * 16) >= 10 \
+#elif (F_CPU/TWI_FREQUENCY - 16) / (2 * 16) >= 2 \
         && (F_CPU/TWI_FREQUENCY - 16) / (2 * 16) <= 0xFF
 #define TWI_PRESCALER 16
 #define TWPS0_VALUE 0
 #define TWPS1_VALUE 1
-#elif (F_CPU/TWI_FREQUENCY - 16) / (2 * 64) >= 10 \
+#elif (F_CPU/TWI_FREQUENCY - 16) / (2 * 64) >= 2 \
         && (F_CPU/TWI_FREQUENCY - 16) / (2 * 64) <= 0xFF
 #define TWI_PRESCALER 64
 #define TWPS0_VALUE 1
 #define TWPS1_VALUE 1
 #else
-#error "TWI_FREQUENCY too low!"
+#error "TWI_FREQUENCY too high!"
 #endif
 
 #define TWBR_VALUE ((F_CPU/TWI_FREQUENCY - 16) / (2 * TWI_PRESCALER))
 
-#ifdef INCLUDE_TWI_INT
-/** Slave address byte (with read/write bit). */
-static uint8_t twiint_address;
-/** Location where the next byte that has been read will be written to
-or the next byte that should be written will be read from. */
-static uint8_t *twiint_data;
-/** Number of bytes already transmitted. */
-static size_t twiint_index;
-/** Number of bytes that should be transmitted. */
-static size_t twiint_len;
-#endif
 
-void twi_init(void) {
+/** Mask TWI slave addressing byte with given id and write intend. */
+#define TWI_ADDRESS_W(id)    (((id) << 1) & ~0x01)
+/** Mask TWI slave addressing byte  with given id and read intend. */
+#define TWI_ADDRESS_R(id)    (((id) << 1) | 0x01)
+
+//void twi_init(uint8_t twbrValue) {
+void twi_init() {
+//    TWBR = twbrValue;
     TWBR = TWBR_VALUE;
     TWSR = (TWPS1_VALUE << TWPS1) | (TWPS0_VALUE << TWPS0);
-
-#ifdef INCLUDE_TWI_INT
-    twint_errors = 0;
-#endif
 
     TWCR = (1 << TWEN);
 }
 
-#ifdef INCLUDE_TWI_INT
-bool twiint_busy(void) {
-    return TWCR & (1 << TWIE);
-}
-
-void twiint_flush(void) {
-    while (TWCR & (1 << TWIE));
-}
-#endif
-
 /**
  * Blocks until the current condition is completed.
  */
-void twi_waitForComplete(void) {
+static void twi_waitForComplete(void) {
     while (~TWCR & (1 << TWINT));
 }
 
@@ -313,68 +293,3 @@ bool twi_readFromSlaveRegister(uint8_t address, uint8_t reg,
 
     return 0;
 }
-
-#ifdef INCLUDE_TWI_INT
-void twiint_start(uint8_t address, uint8_t *data, size_t len) {
-    twiint_flush();
-
-    twiint_address = address;
-    twiint_data = data;
-    twiint_len = len;
-
-    TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN) | (1 << TWIE);
-}
-
-uint16_t twint_errors;
-
-// added to introduce delays that exist in the non-interrupt driven version
-// interrupt driven version does not initialize OLED-091 unless delays are introduced.
-ISR(TWI_vect) {
-    switch (TW_STATUS) {
-        case TW_START:
-        case TW_REP_START:
-            twiint_index = 0;
-            TWDR = twiint_address;
-            TWCR = (1 << TWINT) | (1 << TWEN) | (1 << TWIE);
-            break;
-
-        case TW_MT_SLA_ACK:
-        case TW_MT_DATA_ACK:
-            if (twiint_index < twiint_len) {
-                TWDR = twiint_data[twiint_index++];
-                TWCR = (1 << TWINT) | (1 << TWEN) | (1 << TWIE);
-            } else {
-                TWCR = (1 << TWINT) | (1 << TWEN) | (1 << TWSTO);
-            }
-            break;
-
-        case TW_MR_DATA_ACK:
-            twiint_data[twiint_index++] = TWDR;
-        case TW_MR_SLA_ACK:
-            if (twiint_index < twiint_len - 1) {
-                TWCR = (1 << TWINT) | (1 << TWEA) | (1 << TWEN) | (1 << TWIE);
-            } else {
-                TWCR = (1 << TWINT) | (1 << TWEN) | (1 << TWIE);
-            }
-            break;
-
-        case TW_MR_DATA_NACK:
-            twiint_data[twiint_index++] = TWDR;
-            TWCR = (1 << TWINT) | (1 << TWEN) | (1 << TWSTO);
-            break;
-
-        case TW_MT_ARB_LOST:
-            //case TW_MR_ARB_LOST:
-            TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN) | (1 << TWIE);
-            twint_errors++;
-            break;
-
-        case TW_MT_SLA_NACK:
-        case TW_MT_DATA_NACK:
-        case TW_MR_SLA_NACK:
-        default:
-            TWCR = (1 << TWINT) | (1 << TWEN) | (1 << TWSTO);
-            twint_errors++;
-    }
-}
-#endif

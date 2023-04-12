@@ -25,18 +25,20 @@ gfx_display_buffer_t gfx_display_data = { 0x40 };  // Co = 0, D/C = 1
 #define SSD1306_TWINT_COMMANDS_AFTER_INIT   0x02
 #define SSD1306_TWINT_DATA                  0x04
 #define SSD1306_TWINT_DATA_AFTER_FIRST      0x08
-static uint8_t gfx_twint;
 
 void gfx_init_display(uint8_t contrast) {
     gfx_send_pos = 0;
-    gfx_twint = SSD1306_TWINT_COMMANDS_AFTER_INIT | SSD1306_TWINT_DATA;
 
     gfx_clear_screen();
     // TWI frequency = F_CPU / (2 * twbrValue + 16)
     // 16MHz: 12 - 400000, 10 - 444444, 2 - 8000000
     // 8MHz: 12 - 200000, 10 - 222222, 3 -  2 - 4000000, 1 - 444444
     // twi_init(2);
+#ifdef INCLUDE_TWI_INT
+    twiint_init();
+#else
     twi_init();
+#endif
 
     //hardwareReset();            // initialize display controller
     gfx_start_twi_cmd_frame();
@@ -117,10 +119,6 @@ void gfx_init_display(uint8_t contrast) {
     };
     gfx_twi_pgm_byte_list(init5, sizeof(init5));
     gfx_end_twi_frame();
-
-    if (gfx_twint & SSD1306_TWINT_COMMANDS_AFTER_INIT) {
-        gfx_twint |= SSD1306_TWINT_COMMANDS;
-    }
 }
 
 #ifdef SERIAL_DEBUG_GFX_TWI_STATS
@@ -131,6 +129,11 @@ uint8_t gfx_send_errors;
 
 void gfx_start_twi_cmd_frame() {
     // start accumulating commands
+#ifdef INCLUDE_TWI_INT
+    // this was causing initialization commands not to work with int, overwriting buffer while it is being sent
+    twiint_flush();
+#endif
+
 #ifdef SERIAL_DEBUG_GFX_TWI_STATS
     gfx_send_time = 0;
     gfx_send_bytes = 0;
@@ -149,14 +152,17 @@ void gfx_twi_byte(uint8_t byte) {
         uint32_t start = micros();
 #endif
 
-        if (gfx_twint & SSD1306_TWINT_COMMANDS) {
-            twiint_start(TWI_ADDRESS_W(DISPLAY_ADDRESS), gfx_send_buffer, gfx_send_pos);
-        } else {
-            result = twi_writeToSlave(DISPLAY_ADDRESS, gfx_send_buffer, gfx_send_pos);
+#ifdef INCLUDE_TWI_INT
+        twiint_start(TWI_ADDRESS_W(DISPLAY_ADDRESS), gfx_send_buffer, gfx_send_pos);
+
+        // have to wait for it to send, or will overwrite the buffer before it is sent when the current byte is buffered
+        twiint_flush();
+#else
+        result = twi_writeToSlave(DISPLAY_ADDRESS, gfx_send_buffer, gfx_send_pos);
 #ifdef SERIAL_DEBUG_GFX_TWI_STATS
-            if (result) gfx_send_errors++;
+        if (result) gfx_send_errors++;
 #endif
-        }
+#endif // INCLUDE_TWI_INT
 
 #ifdef SERIAL_DEBUG_GFX_TWI_STATS
         gfx_send_time += micros() - start;
@@ -174,14 +180,15 @@ void gfx_end_twi_frame() {
     uint32_t start = micros();
 #endif
 
-    if (gfx_twint & SSD1306_TWINT_COMMANDS) {
-        twiint_start(TWI_ADDRESS_W(DISPLAY_ADDRESS), gfx_send_buffer, gfx_send_pos);
-    } else {
-        result = twi_writeToSlave(DISPLAY_ADDRESS, gfx_send_buffer, gfx_send_pos);
+#ifdef INCLUDE_TWI_INT
+    twiint_start(TWI_ADDRESS_W(DISPLAY_ADDRESS), gfx_send_buffer, gfx_send_pos);
+#else
+    result = twi_writeToSlave(DISPLAY_ADDRESS, gfx_send_buffer, gfx_send_pos);
 #ifdef SERIAL_DEBUG_GFX_TWI_STATS
-        if (result) gfx_send_errors++;
+    if (result) gfx_send_errors++;
 #endif
-    }
+
+#endif // INCLUDE_TWI_INT
 
 #ifdef SERIAL_DEBUG_GFX_TWI_STATS
     gfx_send_time += micros() - start;
@@ -190,19 +197,35 @@ void gfx_end_twi_frame() {
 #endif
 }
 
+void gfx_starting_next_update() {
+#ifdef INCLUDE_TWI_INT
+    // to prevent buffer being modified while it is still sending
+    twiint_flush();
+#endif
+}
+
 void gfx_display() {
     // get any output or they won't display
     gfx_flush_wrap_chars();
 
     gfx_start_twi_cmd_frame();
+#ifdef GFX_PAGED_UPDATES
+    gfx_twi_byte(SSD1306_PAGEADDR);
+    gfx_twi_byte(gfx_update_page_y0 >> 3);
+    gfx_twi_byte(gfx_update_page_y1 >> 3);
+    gfx_twi_byte(SSD1306_COLUMNADDR);
+    gfx_twi_byte(0);
+    gfx_twi_byte(DISPLAY_XSIZE-1);
+    gfx_end_twi_frame();
+#else
     static const uint8_t dlist1[] PROGMEM = {
             SSD1306_PAGEADDR,       // 0x22
             0,                      // Page start address, bits 0-2
-            0x07,                   // Page end address, bits 0-2 (not really, but works here)
-            SSD1306_COLUMNADDR, 0 }; // 0x21 - Column start address
+            0x07,                   // Page end address, bits 0-2
+            SSD1306_COLUMNADDR, 0, DISPLAY_XSIZE - 1 }; // 0x21 - Column start address, end address
     gfx_twi_pgm_byte_list(dlist1, sizeof(dlist1));
-    gfx_twi_byte(DISPLAY_XSIZE - 1); // Column end address
     gfx_end_twi_frame();
+#endif // GFX_PAGED_UPDATES
 
 #ifdef SERIAL_DEBUG_GFX_TWI_STATS
     uint32_t start = micros();
@@ -252,6 +275,9 @@ void gfx_set_contrast(uint8_t contrast) {
 }
 
 #else
+
+void gfx_starting_next_update() {
+}
 
 void gfx_init_display(uint8_t contrast) {
 }

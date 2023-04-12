@@ -15,7 +15,11 @@
 extern "C" {
 #endif
 
+#ifdef INCLUDE_TWI_INT
+#include "twiint.h"
+#else
 #include "twi.h"
+#endif
 
 #ifndef TWI_BUFFER_LENGTH
 #define TWI_BUFFER_LENGTH 32
@@ -50,6 +54,7 @@ extern void gfx_send_cmd(uint8_t cmd);
 // sending operations
 extern void gfx_twi_byte(uint8_t byte);
 extern void gfx_twi_pgm_byte_list(const uint8_t *bytes, uint16_t count);
+extern void gfx_starting_next_update();
 
 #ifdef SERIAL_DEBUG_GFX_TWI_STATS
 extern uint32_t gfx_send_time;

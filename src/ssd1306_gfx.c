@@ -6,6 +6,7 @@
 #include "Arduino.h"
 
 #include "ssd1306_gfx.h"
+#include "ssd1306.h"
 
 // Based on code from:
 //
@@ -226,6 +227,11 @@ uint8_t gfx_dash_size;            // solid/dash/dot pattern for line outlines (n
 uint8_t gfx_dashOffset;          // solid/dash/dot pattern for line outlines (not text)
 #endif // GFX_NO_LINE_PATTERNS
 
+#ifdef GFX_PAGED_UPDATES
+coord_y gfx_update_page_y0; // this is update page * 8
+coord_y gfx_update_page_y1; // this is (update page+GFX_UPDATE_PAGES)*8
+#endif // GFX_PAGED_UPDATES
+
 uint8_t gfx_wrap_buff_pos; // next character in buffer
 char gfx_wrap_buff[GFX_WRAP_BUFFER_SIZE]; // characters buffered when looking for space on which to possibly break
 
@@ -241,6 +247,9 @@ uint32_t gfx_put_pixel_count;
 #endif
 
 void gfx_clear_screen() {
+    gfx_starting_next_update();
+
+#ifndef GFX_PAGED_UPDATES
     gfx_flags = 0;
     gfx_text_flags = 0;
     gfx_char_x_size = CHAR_WIDTH;    // updated when text size wantFlags change
@@ -258,13 +267,24 @@ void gfx_clear_screen() {
     gfx_min_x = 0;
     gfx_max_y = 0;
     gfx_min_y = 0;
+
 #ifndef GFX_NO_LINE_PATTERNS
     gfx_gap_color = GFX_COLOR_NONE;
     gfx_dash_bits = GFX_BITS_DASH_NONE;
     gfx_dash_size = GFX_SIZE_DASH_NONE;
     gfx_dashOffset = 0;
 #endif // GFX_NO_LINE_PATTERNS
+
     memset(gfx_display_buffer, 0, sizeof(gfx_display_buffer));
+#else
+    gfx_update_page_y0 = 0;
+    gfx_update_page_y1 = 0;
+    gfx_start_next_page();
+#endif
+
+#ifdef CONSOLE_DEBUG
+    memset(gfx_display_buffer, 0, sizeof(gfx_display_buffer));
+#endif
 
 #ifdef SERIAL_DEBUG_GFX_STATS
     gfx_put_ch_total = 0;
@@ -275,9 +295,48 @@ void gfx_clear_screen() {
     gfx_put_ch_lp_count = 0;
     gfx_put_pixel_total = 0;
     gfx_put_pixel_count = 0;
+#endif // SERIAL_DEBUG_GFX_STATS
+}
 
+#ifdef GFX_PAGED_UPDATES
+
+void gfx_start_next_page() {
+    gfx_starting_next_update();
+
+    gfx_flags = 0;
+    gfx_text_flags = 0;
+    gfx_char_x_size = CHAR_WIDTH;    // updated when text size wantFlags change
+    gfx_char_y_size = CHAR_HEIGHT;   // updated when text size wantFlags change
+    gfx_fore_color = GFX_COLOR_WHITE;
+    gfx_back_color = GFX_COLOR_NONE;
+    gfx_cursor_x = 0;
+    gfx_cursor_y = 0;
+    gfx_last_cursor_x = (coord_x) 0x8000;
+    gfx_last_cursor_y = (coord_y) 0x80;
+    gfx_margin_left = 0;
+    gfx_margin_right = DISPLAY_XSIZE;
+    gfx_wrap_buff_pos = 0;
+    gfx_max_x = 0;
+    gfx_min_x = 0;
+    gfx_max_y = 0;
+    gfx_min_y = 0;
+
+#ifndef GFX_NO_LINE_PATTERNS
+    gfx_gap_color = GFX_COLOR_NONE;
+    gfx_dash_bits = GFX_BITS_DASH_NONE;
+    gfx_dash_size = GFX_SIZE_DASH_NONE;
+    gfx_dashOffset = 0;
+#endif // GFX_NO_LINE_PATTERNS
+
+    gfx_update_page_y0 = gfx_update_page_y1;
+    gfx_update_page_y1 += GFX_UPDATE_PAGES << 3;
+
+#ifndef CONSOLE_DEBUG
+    memset(gfx_display_buffer, 0, sizeof(gfx_display_buffer));
 #endif
 }
+
+#endif
 
 #define CHECK_PATH_CONTINUES() \
     ((gfx_last_cursor_x != gfx_cursor_x || gfx_last_cursor_y != gfx_cursor_y) \
@@ -298,7 +357,7 @@ void gfx_clear_screen() {
 void gfx_set_pixel(uint8_t x, coord_y y, color_t color) {
     // HACK: Only works if sizes are powers of two
     if (color != GFX_COLOR_NONE && COORDS_IN_DISPLAY(x, y)) {
-        uint8_t page = y >> 3;
+        uint8_t page = Y_TO_PAGE(y);
         uint8_t mask = (uint8_t) (1 << (y & 7));
         if (color == GFX_COLOR_WHITE) {
             gfx_display_buffer[page][x] |= mask;
@@ -311,6 +370,7 @@ void gfx_set_pixel(uint8_t x, coord_y y, color_t color) {
 }
 
 #ifndef GFX_NO_LINE_PATTERNS
+
 void gfx_set_line_pattern(uint16_t pattern) {
     gfx_dash_bits = GET_DASH_BITS(pattern);
     gfx_dash_size = GET_DASH_SIZE(pattern);
@@ -361,6 +421,7 @@ void gfx_vline_dashed(coord_x x0, coord_y y0, coord_y y1) {
         }
     }
 }
+
 #endif // GFX_NO_LINE_PATTERNS
 
 void gfx_hline(coord_x x0, coord_y y0, coord_x x1, color_t color) {
@@ -370,26 +431,26 @@ void gfx_hline(coord_x x0, coord_y y0, coord_x x1, color_t color) {
     }
 }
 
-
 // draws a vertical line in given color
 void gfx_vline(coord_x x0, coord_y y0, coord_y y1, color_t color) {
     if (x0 < 0 || x0 >= DISPLAY_XSIZE) return;
 
     gfx_normalize_y(&y0, &y1);
+
+    if (y0 >= Y_COORD_DISPLAY_Y1) return;
+    if (y1 < Y_COORD_DISPLAY_Y0) return;
+
+    if (y0 < Y_COORD_DISPLAY_Y0) y0 = Y_COORD_DISPLAY_Y0;
+    if (y1 >= Y_COORD_DISPLAY_Y1) y1 = Y_COORD_DISPLAY_Y1 - 1;
+
 #ifdef GFX_BIT_BLIT
-    if (y0 < 0) y0 = 0;
-    if (y1 < 0) y1 = 0;
-    if (x0 < 0) x0 = 0;
-
-    if (y1 > DISPLAY_YSIZE) y1 = DISPLAY_YSIZE;
-
     // starting end
     uint8_t yStartOffset = y0 & 7;
     uint8_t startMask = 0xff << yStartOffset;
     uint8_t yEndOffset = y1 & 7;
     uint8_t endMask = 0xff >> (8 - yEndOffset - 1);
-    uint8_t yStartPage = y0 >> 3;
-    uint8_t yEndPage = y1 >> 3;
+    uint8_t yStartPage = Y_TO_PAGE(y0);
+    uint8_t yEndPage = Y_TO_PAGE(y1);
 
     while (yStartPage <= yEndPage) {
         if (yStartPage == yEndPage) {
@@ -1045,11 +1106,13 @@ void gfx_set_text_col_row(int8_t x, coord_y y) {
 }
 
 bool gfx_is_char_visible() {
+    // CAUTION: need to test against the full display, not paged update or the output will not match
     return !(gfx_cursor_x + gfx_char_x_size <= 0 || gfx_cursor_x >= DISPLAY_XSIZE || gfx_cursor_y + gfx_char_y_size <= 0 ||
              gfx_cursor_y >= DISPLAY_YSIZE);
 }
 
 bool gfx_is_char_clipped() {
+    // CAUTION: need to test against the full display, not paged update or the output will not match
     return gfx_is_char_visible()
            && (gfx_cursor_x < 0 || gfx_cursor_x + gfx_char_x_size > DISPLAY_XSIZE || gfx_cursor_y < 0 || gfx_cursor_y + gfx_char_y_size > DISPLAY_YSIZE);
 }
@@ -1204,10 +1267,10 @@ void gfx_bitBlit(const uint8_t *pData, uint8_t xSize, uint8_t ySize) {
     }
 
     if (x0 >= DISPLAY_XSIZE) return;
-    if (y0 >= DISPLAY_YSIZE) return;
+    if (!Y_COORDS_VISIBLE(y0, y0 + ySize)) return;
 
     blt_yOffset = y0 & 7;
-    blt_yPage = y0 >> 3;
+    blt_yPage = Y_TO_PAGE(y0);
 
     if (ySize - blt_yPreOffset < 8) {
         blt_mask = (0xff >> (8 - ySize - blt_yPreOffset)) << blt_yOffset;
@@ -1220,12 +1283,17 @@ void gfx_bitBlit(const uint8_t *pData, uint8_t xSize, uint8_t ySize) {
     blt_p = pData;
 
     if (blt_x1 > DISPLAY_XSIZE) blt_x1 = DISPLAY_XSIZE;
-    if (ySize > DISPLAY_YSIZE - y0) ySize = DISPLAY_YSIZE - y0;
+
+    if (ySize > Y_COORD_DISPLAY_Y1 - y0) ySize = Y_COORD_DISPLAY_Y1 - y0;
+    if (ySize == 0) return;
+
     if (blt_yPreOffset) blt_yOffset = blt_yPreOffset;
 
-    bitBlt();
+    if (y0 >= Y_COORD_DISPLAY_Y0) {
+        bitBlt();
+    }
 
-    if (blt_yOffset + ySize > 8) {
+    if (blt_yOffset + ySize > 8 && Y_COORD_IN_DISPLAY_Y1(blt_yOffset + ySize)) {
         // have to split over two rows
         blt_yOffset = y0 & 7;
         blt_yPage++;
@@ -1343,7 +1411,7 @@ bool gfx_put_ch(char ch) {
 
             if (yPixels > 8) {
                 gfx_cursor_y += 8;
-                if (gfx_cursor_y < DISPLAY_YSIZE) {
+                if (gfx_cursor_y < Y_COORD_DISPLAY_Y1) {
                     gfx_bitBlit(charBits + xPixels, xPixels, yPixels - 8);
                 }
                 gfx_cursor_y -= 8;
@@ -1562,6 +1630,7 @@ bool gfx_put_ch(char ch) {
     return
             retVal;
 }
+
 #endif
 
 void gfx_new_line() {
@@ -1898,7 +1967,7 @@ void gfx_print_display(FILE *stream) {
     putc('\\', stream);
     putc('\n', stream);
 
-    for (int pg = 0; pg < DISPLAY_YSIZE / 8; pg++) {
+    for (int pg = 0; pg < GFX_UPDATE_PAGES; pg++) {
         for (int b = 1; b < 256; b *= 2) {
             putc('|', stream);
             for (int c = 0; c < DISPLAY_XSIZE; c++) {
@@ -1915,7 +1984,7 @@ void gfx_print_display(FILE *stream) {
     }
     putc('/', stream);
     putc('\n', stream);
-};
+}
 
 #ifdef CONSOLE_DEBUG
 
@@ -1937,7 +2006,7 @@ void gfx_display_to_str(char *s) {
     *s++ = '\\';
     *s++ = '\n';
 
-    for (int pg = 0; pg < DISPLAY_YSIZE / 8; pg++) {
+    for (int pg = 0; pg < GFX_BUFFER_UPDATE_PAGES; pg++) {
         for (int b = 1; b < 256; b *= 2) {
             *s++ = '|';
             for (int c = 0; c < DISPLAY_XSIZE; c++) {

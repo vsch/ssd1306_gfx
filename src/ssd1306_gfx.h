@@ -128,8 +128,58 @@ typedef uint8_t color_t;
 #define GET_DASH_BITS(p) ((p) & 0xff)
 #define GET_DASH_SIZE(p) ((p) >> 8)
 
+#define X_COORDS_VISIBLE(x0, x1)   ((x1) >= 0 && (x0) < DISPLAY_XSIZE)
+#define X_COORDS_CLIPPED(x0, x1)   ((x0) < 0 || (x1) >= DISPLAY_XSIZE)
+
+#ifdef GFX_PAGED_UPDATES
+
+#ifndef GFX_UPDATE_PAGES
+#define GFX_UPDATE_PAGES 1
+#endif
+
+extern coord_y gfx_update_page_y0; // this is update page * 8
+extern coord_y gfx_update_page_y1; // this is (update page+GFX_UPDATE_PAGES)*8
+
+extern void gfx_start_next_page();
+
+// Y valid when in [gfx_update_page*8, (gfx_update_page+GFX_UPDATE_PAGES)*8)
+//  000pp000 to 00qq000 where pp is gfx_update_page and qq is gfx_update_page+GFX_UPDATE_PAGES
+#define Y_COORD_DISPLAY_Y0   gfx_update_page_y0
+#define Y_COORD_DISPLAY_Y1   gfx_update_page_y1
+#define COORDS_IN_DISPLAY(x, y)   (!((x) & ~(DISPLAY_XSIZE - 1)) && (y) >= Y_COORD_DISPLAY_Y0 && (y) < Y_COORD_DISPLAY_Y1)
+#else
+
+#define GFX_UPDATE_PAGES (DISPLAY_YSIZE / 8)
+
+#define Y_COORD_DISPLAY_Y0   0
+#define Y_COORD_DISPLAY_Y1   DISPLAY_YSIZE
+
 // HACK: Only works if sizes are powers of two
 #define COORDS_IN_DISPLAY(x, y)   (!((x) & ~(DISPLAY_XSIZE - 1)) && !((y) & ~(DISPLAY_YSIZE - 1)))
+#endif // GFX_PAGED_UPDATES
+
+#ifndef CONSOLE_DEBUG
+#define GFX_BUFFER_UPDATE_PAGES GFX_UPDATE_PAGES
+#else
+#define GFX_BUFFER_UPDATE_PAGES (DISPLAY_YSIZE / 8)
+#endif // CONSOLE_DEBUG
+
+#define Y_COORD_IN_DISPLAY_Y0(y)   ((y) >= Y_COORD_DISPLAY_Y0)
+#define Y_COORD_IN_DISPLAY_Y1(y)   ((y) < Y_COORD_DISPLAY_Y1)
+#define Y_COORD_IN_DISPLAY(y)      (Y_COORD_IN_DISPLAY_Y0(y) && Y_COORD_IN_DISPLAY_Y1(y))
+#define Y_COORDS_VISIBLE(y0, y1)   (Y_COORD_IN_DISPLAY_Y0(y1) && Y_COORD_IN_DISPLAY_Y1(y0))
+#define Y_COORDS_CLIPPED(y0, y1)   (!(Y_COORD_IN_DISPLAY_Y0(y0) && Y_COORD_IN_DISPLAY_Y1(y1)))
+
+#ifndef CONSOLE_DEBUG
+#define Y_TO_PAGE(y)  (((y) - Y_COORD_DISPLAY_Y0) >> 3)
+#else
+// for testing, update the right location in the display buffer as if not paged
+#define Y_TO_PAGE(y)  ((y) >> 3)
+#endif // CONSOLE_DEBUG
+
+#define CLIP_TO_UPDATE_PAGE_Y0(y)  ((y) < Y_COORD_DISPLAY_Y0 ? Y_COORD_DISPLAY_Y0 : (y))
+#define CLIP_TO_UPDATE_PAGE_Y1(y)  ((y) >= Y_COORD_DISPLAY_Y1 ? Y_COORD_DISPLAY_Y1 : (y))
+#define CLIP_TO_UPDATE_PAGE(y)  ((y) >= Y_COORD_DISPLAY_Y1 ? Y_COORD_DISPLAY_Y1 : (y) <= Y_COORD_DISPLAY_Y0 ? Y_COORD_DISPLAY_Y0 : (y))
 
 // octants for circle arcs are:
 //         -x -y 128    1 +x -y
@@ -269,7 +319,7 @@ extern uint8_t gfx_dashOffset;          // solid/dash/dot pattern for line outli
 
 typedef struct gfx_display_buffer {
     const uint8_t twi_data;
-    uint8_t display_buffer[DISPLAY_YSIZE / 8][DISPLAY_XSIZE];
+    uint8_t display_buffer[GFX_BUFFER_UPDATE_PAGES][DISPLAY_XSIZE];
 } gfx_display_buffer_t;
 
 extern gfx_display_buffer_t gfx_display_data;
