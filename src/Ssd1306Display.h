@@ -114,7 +114,6 @@ public:
     inline void initDisplay(uint8_t contrast) { gfx_init_display(contrast); }
     inline void displayOff() { gfx_display_off(); }
     inline void displayOn() { gfx_display_on(); }
-    inline void clearScreen() { gfx_clear_display(); }
     inline void clearDisplay() { gfx_clear_display(); }
     inline void display() { gfx_display(); }
     inline void setInvertedDisplay() { gfx_set_inverted(); }
