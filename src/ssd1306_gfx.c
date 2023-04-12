@@ -298,9 +298,12 @@ void gfx_clear_display() {
 #endif // SERIAL_DEBUG_GFX_STATS
 }
 
-#ifdef GFX_PAGED_UPDATES
-
-void gfx_start_next_page() {
+#ifndef GFX_PAGED_UPDATES
+uint8_t gfx_start_next_page() {
+    return 1;
+}
+#else
+uint8_t gfx_start_next_page() {
     gfx_starting_next_update();
 
     gfx_flags = 0;
@@ -334,7 +337,9 @@ void gfx_start_next_page() {
 #ifndef CONSOLE_DEBUG
     memset(gfx_display_buffer, 0, sizeof(gfx_display_buffer));
 #endif
+    return gfx_update_page_y1 > DISPLAY_YSIZE;
 }
+
 
 #endif
 

@@ -133,14 +133,16 @@ typedef uint8_t color_t;
 
 #ifdef GFX_PAGED_UPDATES
 
-#ifndef GFX_UPDATE_PAGES
+#ifndef  GFX_UPDATE_PAGES
 #define GFX_UPDATE_PAGES 1
+#endif
+
+#if GFX_UPDATE_PAGES < 1 || GFX_UPDATE_PAGES > (DISPLAY_YSIZE/8)
+#error GFX_UPDATE_PAGES must be at least 1 and at most DISPLAY_YSIZE/8.
 #endif
 
 extern coord_y gfx_update_page_y0; // this is update page * 8
 extern coord_y gfx_update_page_y1; // this is (update page+GFX_UPDATE_PAGES)*8
-
-extern void gfx_start_next_page();
 
 // Y valid when in [gfx_update_page*8, (gfx_update_page+GFX_UPDATE_PAGES)*8)
 //  000pp000 to 00qq000 where pp is gfx_update_page and qq is gfx_update_page+GFX_UPDATE_PAGES
@@ -279,6 +281,7 @@ extern void gfx_display_off();
 extern void gfx_display_on();
 extern void gfx_set_contrast(uint8_t contrast);
 extern void gfx_display();
+extern uint8_t gfx_start_next_page();
 
 // graphics functions/variables
 extern uint8_t gfx_flags;           // option flags

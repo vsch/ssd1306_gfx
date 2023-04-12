@@ -120,6 +120,13 @@ public:
     inline void clearInvertedDisplay() { gfx_clear_inverted(); }
     inline void setContrast(uint8_t contrast) { gfx_set_contrast(contrast); }
 
+    /**
+     * Prepare to start update for the next page of the display, if GFX_PAGED_UPDATES is set
+     *
+     * @return 0 if have a page to update, else 1 if all pages were updated
+     */
+    inline uint8_t startNextPage() { return gfx_start_next_page(); }
+
     inline void setPixel(coord_x x, coord_y y, color_t color) { gfx_set_pixel(x, y, color); }
     inline void moveToText(int8_t col, int8_t row) { gfx_set_text_col_row(col, row); }
     inline void setColors(color_t fg, color_t bg) { gfx_fore_color = fg, gfx_back_color = bg; }

@@ -18,7 +18,9 @@ ENDIF ()
 set(${PROJECT_NAME}_BOARD pro)
 project(${PROJECT_NAME})
 
+add_compile_definitions(GFX_PAGED_UPDATES)
 add_compile_definitions(INCLUDE_TWI_INT)
+add_compile_definitions(SERIAL_DEBUG_GFX_TWI_STATS)
 set(TWI_C_FILES src/twiint.c)
 set(TWI_H_FILES src/twiint.h)
 

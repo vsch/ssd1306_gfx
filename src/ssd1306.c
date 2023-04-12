@@ -25,26 +25,29 @@ uint8_t gfx_send_pos;
 //    function.
 gfx_display_buffer_t gfx_display_data;// = {0x40}; // Co = 0, D/C = 1
 
-#define SSD1306_TWINT_COMMANDS              0x01
-#define SSD1306_TWINT_COMMANDS_AFTER_INIT   0x02
-#define SSD1306_TWINT_DATA                  0x04
-#define SSD1306_TWINT_DATA_AFTER_FIRST      0x08
+#ifdef INCLUDE_TWI_INT
+
+#define TWI_FLUSH() twiint_flush()
+#define TWI_INIT() twiint_init()
+
+#else
+
+#define TWI_FLUSH() ((void)0)
+#define TWI_INIT() twi_init()
+
+#endif // INCLUDE_TWI_INT
 
 void gfx_init_display(uint8_t contrast) {
     gfx_send_pos = 0;
     // HACK: get around the byte being const for the rest of its life
-    *((uint8_t *)&gfx_display_data.twi_data) = 0x40;  // Co = 0, D/C = 1
+    *((uint8_t *) &gfx_display_data.twi_data) = 0x40;  // Co = 0, D/C = 1
 
     gfx_clear_display();
     // TWI frequency = F_CPU / (2 * twbrValue + 16)
     // 16MHz: 12 - 400000, 10 - 444444, 2 - 8000000
     // 8MHz: 12 - 200000, 10 - 222222, 3 -  2 - 4000000, 1 - 444444
     // twi_init(2);
-#ifdef INCLUDE_TWI_INT
-    twiint_init();
-#else
-    twi_init();
-#endif
+    TWI_INIT();
 
     //hardwareReset();            // initialize display controller
     gfx_start_twi_cmd_frame();
@@ -131,20 +134,39 @@ void gfx_init_display(uint8_t contrast) {
 uint32_t gfx_send_time = 0;
 uint16_t gfx_send_bytes = 0;
 uint8_t gfx_send_errors;
-#endif
+
+#define RESET_SERIAL_DEBUG_GFX_TWI_STATS() \
+    gfx_send_time = 0; \
+    gfx_send_bytes = 0; \
+    gfx_send_errors = 0
+
+#define START_SERIAL_DEBUG_GFX_TWI_STATS() \
+        uint32_t start = micros()
+
+#define RESTART_SERIAL_DEBUG_GFX_TWI_STATS() \
+        start = micros()
+
+#define END_SERIAL_DEBUG_GFX_TWI_STATS(bytes_sent) \
+        gfx_send_time += micros() - start; \
+        gfx_send_bytes += (bytes_sent)
+
+#define PRINTF_SERIAL_DEBUG_GFX_TWI_STATS(...) printf_P(__VA_ARGS__)
+
+#else
+#define RESET_SERIAL_DEBUG_GFX_TWI_STATS()                  ((void)0)
+#define START_SERIAL_DEBUG_GFX_TWI_STATS()                  ((void)0)
+#define END_SERIAL_DEBUG_GFX_TWI_STATS(bytes_sent)          ((void)0)
+#define PRINTF_SERIAL_DEBUG_GFX_TWI_STATS(...)              ((void)0)
+#endif // SERIAL_DEBUG_GFX_TWI_STATS
 
 void gfx_start_twi_cmd_frame() {
     // start accumulating commands
-#ifdef INCLUDE_TWI_INT
-    // this was causing initialization commands not to work with int, overwriting buffer while it is being sent
-    twiint_flush();
-#endif
+    RESET_SERIAL_DEBUG_GFX_TWI_STATS();
 
-#ifdef SERIAL_DEBUG_GFX_TWI_STATS
-    gfx_send_time = 0;
-    gfx_send_bytes = 0;
-    gfx_send_errors = 0;
-#endif
+    // not flushing the last transmission was causing initialization commands not to work with int, overwriting buffer while it is being sent
+    START_SERIAL_DEBUG_GFX_TWI_STATS();
+    TWI_FLUSH();
+    END_SERIAL_DEBUG_GFX_TWI_STATS(0);
 
     gfx_send_pos = 0;
     gfx_twi_byte((uint8_t) 0x00); // Co = 0, D/C = 0
@@ -153,27 +175,17 @@ void gfx_start_twi_cmd_frame() {
 void gfx_twi_byte(uint8_t byte) {
     if (gfx_send_pos >= TWI_BUFFER_LENGTH) {
         // buffer is full, send it and wait for completion
-        uint8_t result = 0;
-#ifdef SERIAL_DEBUG_GFX_TWI_STATS
-        uint32_t start = micros();
-#endif
+        START_SERIAL_DEBUG_GFX_TWI_STATS();
 
 #ifdef INCLUDE_TWI_INT
         twiint_start(TWI_ADDRESS_W(DISPLAY_ADDRESS), gfx_send_buffer, gfx_send_pos);
-
         // have to wait for it to send, or will overwrite the buffer before it is sent when the current byte is buffered
         twiint_flush();
 #else
-        result = twi_writeToSlave(DISPLAY_ADDRESS, gfx_send_buffer, gfx_send_pos);
-#ifdef SERIAL_DEBUG_GFX_TWI_STATS
-        if (result) gfx_send_errors++;
-#endif
+        twi_writeToSlave(DISPLAY_ADDRESS, gfx_send_buffer, gfx_send_pos);
 #endif // INCLUDE_TWI_INT
 
-#ifdef SERIAL_DEBUG_GFX_TWI_STATS
-        gfx_send_time += micros() - start;
-        gfx_send_bytes += gfx_send_pos;
-#endif
+        END_SERIAL_DEBUG_GFX_TWI_STATS(gfx_send_pos);
         gfx_send_pos = 1; // keep the type command/data
     }
     gfx_send_buffer[gfx_send_pos++] = byte;
@@ -181,33 +193,25 @@ void gfx_twi_byte(uint8_t byte) {
 
 void gfx_end_twi_frame() {
     // send the accumulated buffer
-    uint8_t result = 0;
-#ifdef SERIAL_DEBUG_GFX_TWI_STATS
-    uint32_t start = micros();
-#endif
+    START_SERIAL_DEBUG_GFX_TWI_STATS();
 
 #ifdef INCLUDE_TWI_INT
     twiint_start(TWI_ADDRESS_W(DISPLAY_ADDRESS), gfx_send_buffer, gfx_send_pos);
 #else
-    result = twi_writeToSlave(DISPLAY_ADDRESS, gfx_send_buffer, gfx_send_pos);
-#ifdef SERIAL_DEBUG_GFX_TWI_STATS
-    if (result) gfx_send_errors++;
-#endif
-
+    twi_writeToSlave(DISPLAY_ADDRESS, gfx_send_buffer, gfx_send_pos);
 #endif // INCLUDE_TWI_INT
 
-#ifdef SERIAL_DEBUG_GFX_TWI_STATS
-    gfx_send_time += micros() - start;
-    gfx_send_bytes += gfx_send_pos;
-    printf("%8ld: TWI %d bytes in %ld usec %d\n", start / 1000L, gfx_send_bytes, gfx_send_time, gfx_send_errors);
-#endif
+    END_SERIAL_DEBUG_GFX_TWI_STATS(gfx_send_pos);
+
+    PRINTF_SERIAL_DEBUG_GFX_TWI_STATS(PSTR("%8ld: TWI %d command bytes in %ld usec %d\n"), start / 1000L, gfx_send_bytes, gfx_send_time, gfx_send_errors);
 }
 
 void gfx_starting_next_update() {
-#ifdef INCLUDE_TWI_INT
     // to prevent buffer being modified while it is still sending
-    twiint_flush();
-#endif
+    START_SERIAL_DEBUG_GFX_TWI_STATS();
+    TWI_FLUSH();
+    END_SERIAL_DEBUG_GFX_TWI_STATS(0);
+    PRINTF_SERIAL_DEBUG_GFX_TWI_STATS(PSTR("%8ld: TWI %d next update in %ld usec %d\n"), start / 1000L, gfx_send_bytes, gfx_send_time, gfx_send_errors);
 }
 
 void gfx_display() {
@@ -221,7 +225,7 @@ void gfx_display() {
     gfx_twi_byte(gfx_update_page_y1 >> 3);
     gfx_twi_byte(SSD1306_COLUMNADDR);
     gfx_twi_byte(0);
-    gfx_twi_byte(DISPLAY_XSIZE-1);
+    gfx_twi_byte(DISPLAY_XSIZE - 1);
     gfx_end_twi_frame();
 #else
     static const uint8_t dlist1[] PROGMEM = {
@@ -233,11 +237,21 @@ void gfx_display() {
     gfx_end_twi_frame();
 #endif // GFX_PAGED_UPDATES
 
-#ifdef SERIAL_DEBUG_GFX_TWI_STATS
-    uint32_t start = micros();
-#endif
-
+    RESET_SERIAL_DEBUG_GFX_TWI_STATS();
+    START_SERIAL_DEBUG_GFX_TWI_STATS();
+#ifdef INCLUDE_TWI_INT
     twiint_start(TWI_ADDRESS_W(DISPLAY_ADDRESS), &gfx_display_data, sizeof(gfx_display_data));
+#else
+    twi_writeToSlave(DISPLAY_ADDRESS, &gfx_display_data, sizeof(gfx_display_data));
+#endif // INCLUDE_TWI_INT
+    END_SERIAL_DEBUG_GFX_TWI_STATS(sizeof(gfx_display_data));
+    PRINTF_SERIAL_DEBUG_GFX_TWI_STATS(PSTR("%8ld: TWI pg %d-%d, %d data bytes in %ld usec %d\n")
+                                      , start / 1000L
+                                      , (uint16_t) (Y_COORD_DISPLAY_Y0 >> 3)
+                                      , (uint16_t) (Y_COORD_DISPLAY_Y1 >> 3)
+                                      , gfx_send_bytes
+                                      , gfx_send_time
+                                      , gfx_send_errors);
 }
 
 // actually send command and wait for completion
@@ -264,9 +278,7 @@ void gfx_clear_inverted() {
 
 void gfx_display_off() {
     gfx_send_cmd(SSD1306_DISPLAYOFF);
-#ifdef INCLUDE_TWI_INT
-    twiint_flush(); // wait for it to complete
-#endif // INCLUDE_TWI_INT
+    TWI_FLUSH(); // wait for it to complete
 }
 
 void gfx_display_on() {
@@ -280,7 +292,7 @@ void gfx_set_contrast(uint8_t contrast) {
     gfx_end_twi_frame();
 }
 
-#else
+#else // CONSOLE_DEBUG
 
 void gfx_starting_next_update() {
 }
@@ -304,5 +316,5 @@ void gfx_display_on() {
 void gfx_set_contrast(uint8_t contrast) {
 }
 
-#endif
+#endif // CONSOLE_DEBUG
 

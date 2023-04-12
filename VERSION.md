@@ -2,6 +2,7 @@
 
 [TOC]: #
 
+- [1.26](#126)
 - [1.24](#124)
 - [1.22](#122)
 - [1.20](#120)
@@ -17,6 +18,10 @@
 - [0.1](#01)
 - [0.2](#02)
 
+
+## 1.26
+
+* Fix: paged updates to be easier to implement on the interface side
 
 ## 1.24
 
