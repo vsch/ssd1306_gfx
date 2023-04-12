@@ -43,10 +43,10 @@
   display with one-page buffer and 50% longer with a two-page buffer,
   over the time it takes with a full four-page buffer.
 
-* Fix: problem with using TWI int version for initialization. The buffer
-  was being overwritten before it was sent. Reverted files back to
-  ATmega328p library originals and now including blocking or interrupt
-  driven versions depending on `INCLUDE_TWI_INT` macro.
+* Fix: problem with using TWI interrupt version for initialization. The
+  buffer was being overwritten before it was sent. Reverted files back
+  to ATmega328p library originals and now including blocking or
+  interrupt driven versions depending on `INCLUDE_TWI_INT` macro.
 
 * Fix: found that initializing a single non-zero byte of a multi-byte
   structure causes an image for the full structure to be allocated in
