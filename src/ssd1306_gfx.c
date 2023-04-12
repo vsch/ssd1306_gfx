@@ -246,7 +246,7 @@ uint32_t gfx_put_pixel_total;
 uint32_t gfx_put_pixel_count;
 #endif
 
-void gfx_clear_screen() {
+void gfx_clear_display() {
     gfx_starting_next_update();
 
 #ifndef GFX_PAGED_UPDATES

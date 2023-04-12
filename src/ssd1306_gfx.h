@@ -326,7 +326,7 @@ extern gfx_display_buffer_t gfx_display_data;
 #define gfx_display_buffer gfx_display_data.display_buffer
 
 // display functions
-extern void gfx_clear_screen();
+extern void gfx_clear_display();
 
 // user display operations
 // primitives used in library

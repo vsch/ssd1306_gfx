@@ -19,7 +19,11 @@
 #ifndef CONSOLE_DEBUG
 uint8_t gfx_send_buffer[TWI_BUFFER_LENGTH];
 uint8_t gfx_send_pos;
-gfx_display_buffer_t gfx_display_data = { 0x40 };  // Co = 0, D/C = 1
+// CAVEAT: initializing a single byte of a static structure allocates PROGMEM
+//    for the full structure to copy to RAM during initialization. In this case
+//    it means 512 bytes of FLASH are gone in a flash. Better to do it in the init
+//    function.
+gfx_display_buffer_t gfx_display_data;// = {0x40}; // Co = 0, D/C = 1
 
 #define SSD1306_TWINT_COMMANDS              0x01
 #define SSD1306_TWINT_COMMANDS_AFTER_INIT   0x02
@@ -28,8 +32,10 @@ gfx_display_buffer_t gfx_display_data = { 0x40 };  // Co = 0, D/C = 1
 
 void gfx_init_display(uint8_t contrast) {
     gfx_send_pos = 0;
+    // HACK: get around the byte being const for the rest of its life
+    *((uint8_t *)&gfx_display_data.twi_data) = 0x40;  // Co = 0, D/C = 1
 
-    gfx_clear_screen();
+    gfx_clear_display();
     // TWI frequency = F_CPU / (2 * twbrValue + 16)
     // 16MHz: 12 - 400000, 10 - 444444, 2 - 8000000
     // 8MHz: 12 - 200000, 10 - 222222, 3 -  2 - 4000000, 1 - 444444
