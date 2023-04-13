@@ -67,6 +67,9 @@ public:
     void drawBitmap(int16_t x, int16_t y, const uint8_t bitmap[], int16_t w, int16_t h, uint16_t color);
     void getTextBounds(PGM_STR s, int16_t x, int16_t y, int16_t *pX0, int16_t *pY0, uint16_t *pW, uint16_t *pH);
     void invertDisplay(bool val);
+    inline void invertedDisplay() { gfx_set_inverted(); }
+    inline void normalDisplay() { gfx_clear_inverted(); }
+
     void setTextColor(uint16_t c, uint16_t bg);
 
     // @formatter:off

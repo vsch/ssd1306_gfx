@@ -45,7 +45,6 @@ typedef const __FlashStringHelper *PGM_STR;
 
 #else
 typedef const char *PGM_STR;
-
 typedef const char *PGM_P;
 typedef const char *PGM_STR;
 #define PSTR(s)  s

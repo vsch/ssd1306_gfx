@@ -937,6 +937,8 @@ void gfx_bitmap(const uint8_t bitmap[], uint8_t w, uint8_t h) {
     coord_x x0 = gfx_cursor_x;
     coord_y y0 = gfx_cursor_y;
     for (uint8_t y = 0; y < chunkHeight; y += 8) {
+        if (!Y_COORDS_VISIBLE(y0 + y, y0 + y + chunkHeight)) continue;
+
         for (uint8_t x = 0; x < chunkWidth; x += 32) {
             // read bitmap chunk from PROGMEM, read
             uint8_t cw = x + 32 > w ? w - x : 32;
