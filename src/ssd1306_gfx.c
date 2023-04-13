@@ -302,7 +302,16 @@ void gfx_clear_display() {
 uint8_t gfx_start_next_page() {
     return 1;
 }
+
+uint8_t gfx_is_paged_update() {
+    return 0;
+}
 #else
+
+uint8_t gfx_is_paged_update() {
+    return 1;
+}
+
 uint8_t gfx_start_next_page() {
     gfx_starting_next_update();
 
@@ -339,7 +348,6 @@ uint8_t gfx_start_next_page() {
 #endif
     return gfx_update_page_y1 > DISPLAY_YSIZE;
 }
-
 
 #endif
 
@@ -1964,15 +1972,17 @@ void gfx_progress_bar_to(uint8_t pbFlags, uint8_t progress, coord_x x1, coord_y 
     }
 }
 
-void gfx_print_display(FILE *stream) {
+void gfx_print_screen(FILE *stream) {
     gfx_end_text_spc_wrap();
 
-    putc('/', stream);
-    for (int i = 0; i < DISPLAY_XSIZE; i++) {
-        putc('-', stream);
+    if (Y_COORD_DISPLAY_Y0 == 0) {
+        putc('/', stream);
+        for (int i = 0; i < DISPLAY_XSIZE; i++) {
+            putc('-', stream);
+        }
+        putc('\\', stream);
+        putc('\n', stream);
     }
-    putc('\\', stream);
-    putc('\n', stream);
 
     for (int pg = 0; pg < GFX_UPDATE_PAGES; pg++) {
         for (int b = 1; b < 256; b *= 2) {
@@ -1985,12 +1995,14 @@ void gfx_print_display(FILE *stream) {
         }
     }
 
-    putc('\\', stream);
-    for (int i = 0; i < DISPLAY_XSIZE; i++) {
-        putc('-', stream);
+    if (Y_COORD_DISPLAY_Y1 >= DISPLAY_YSIZE) {
+        putc('\\', stream);
+        for (int i = 0; i < DISPLAY_XSIZE; i++) {
+            putc('-', stream);
+        }
+        putc('/', stream);
+        putc('\n', stream);
     }
-    putc('/', stream);
-    putc('\n', stream);
 }
 
 #ifdef CONSOLE_DEBUG

@@ -69,6 +69,8 @@ public:
     void invertDisplay(bool val);
     inline void invertedDisplay() { gfx_set_inverted(); }
     inline void normalDisplay() { gfx_clear_inverted(); }
+    inline uint8_t isPagedUpdate() { return gfx_is_paged_update(); }
+    inline void printScreen(FILE *stream) { gfx_print_screen(stream); }
 
     void setTextColor(uint16_t c, uint16_t bg);
 

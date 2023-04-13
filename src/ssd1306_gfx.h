@@ -281,6 +281,7 @@ extern void gfx_display_on();
 extern void gfx_set_contrast(uint8_t contrast);
 extern void gfx_display();
 extern uint8_t gfx_start_next_page();
+extern uint8_t gfx_is_paged_update();
 
 // graphics functions/variables
 extern uint8_t gfx_flags;           // option flags
@@ -380,7 +381,7 @@ extern void gfx_clip_to_screen(coord_x *x, coord_y *y);
 #define PB_VERTICAL 0x02
 
 extern void gfx_progress_bar_to(uint8_t pbFlags, uint8_t progress, coord_x x1, coord_y y1, color_t undoneColor);
-extern void gfx_print_display(FILE *stream);
+extern void gfx_print_screen(FILE *stream);
 
 #ifdef GFX_FANCY
 extern void gfx_ellipse(int8_t width, int8_t height);         // draw ellipse centered on cursor, outline in foreground, fill in background
