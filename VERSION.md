@@ -2,6 +2,7 @@
 
 [TOC]: #
 
+- [1.28](#128)
 - [1.26](#126)
 - [1.24](#124)
 - [1.22](#122)
@@ -18,6 +19,10 @@
 - [0.1](#01)
 - [0.2](#02)
 
+
+## 1.28
+
+* Add: bit map optimization for paged updates
 
 ## 1.26
 
@@ -39,7 +44,7 @@
   for (; gfx_update_page_y1 <= DISPLAY_YSIZE; gfx_start_next_page()) { 
      your_display_update();
 
-     gfx_display(); 
+     gfx_display();
   }
   ```
 
