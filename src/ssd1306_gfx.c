@@ -1848,6 +1848,8 @@ void gfx_print_value(uint8_t flags, int16_t value, int16_t valueDivider, PGM_P s
     uint8_t textSizeFlags = gfx_text_flags;
 
     if (someSet(flags, PV_2X_SIZE | PV_2X_SIZE_UNITS_ONLY)) gfx_set_text_size_flags(GFX_TEXT_FLAG_DOUBLE_SIZE);
+    if (!valueDivider) valueDivider = 1;
+
     int16_t valueUnits = (int16_t) (value / valueDivider);
 
     if (value > 0 && someSet(flags, PV_ALWAYS_PRINT_SIGN)) {

@@ -116,10 +116,10 @@ void gfx_init_display(uint8_t contrast) {
 #endif
 
     gfx_twi_byte(SSD1306_SETPRECHARGE);         // 0xd9
-    gfx_twi_byte(!(SSD1306_CONFIG_FLAGS & SSD1306_SWITCHCAPVCC) ? 0x22 : 0xF1); // 0x22 on reset
+    gfx_twi_byte(!(SSD1306_CONFIG_FLAGS & SSD1306_SWITCHCAPVCC) ? 0x22 : 0xF1); // 0x22 on restart
     static const uint8_t PROGMEM init5[] = {
             SSD1306_SETVCOMDETECT,               // 0xDB
-            0x40,                                // reset default 0x40, 0x20 => 0.65 Vcc
+            0x40,                                // restart default 0x40, 0x20 => 0.65 Vcc
             SSD1306_DISPLAYALLON_RESUME,         // 0xA4
             SSD1306_NORMALDISPLAY,               // 0xA6
             SSD1306_DEACTIVATE_SCROLL,
